@@ -1,0 +1,44 @@
+/**
+ * Colores Globales - SISPROMIN
+ * Variables CSS para mantener consistencia en todo el sistema
+ */
+
+:root {
+  /* Colores principales */
+  --color-primary: #1571b0;
+  --color-primary-dark: #125f95;
+  --color-primary-light: rgba(21, 113, 176, 0.1);
+
+  /* Colores de estado */
+  --color-success: #20c997;
+  --color-warning: #ff8c00;
+  --color-danger: #e63946;
+  --color-info: #17a2b8;
+  --color-secondary: #6c757d;
+  --color-light: #f8f9fa;
+  --color-dark: #212529;
+
+  /* Colores para botones de exportación */
+  --color-excel: #22c55e;
+  --color-pdf: #e63946;
+  --color-copy: #6366f1;
+  --color-print: #0d6efd;
+
+  /* Gradientes */
+  --gradient-primary: linear-gradient(135deg, #1571b0 0%, #125f95 100%);
+  --gradient-success: linear-gradient(135deg, #20c997 0%, #17a085 100%);
+  --gradient-warning: linear-gradient(135deg, #ff8c00 0%, #e67e22 100%);
+  --gradient-danger: linear-gradient(135deg, #e63946 0%, #c0392b 100%);
+
+  /* Sombras */
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1);
+  --shadow-md: 0 2px 6px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 4px 12px rgba(0, 0, 0, 0.12);
+
+  /* Colores adicionales para secciones */
+  --color-section-basic: #2196f3;
+  --color-section-technical: #ff9800;
+  --color-section-orometer: #4caf50;
+  --color-section-observations: #9c27b0;
+  --color-section-components: #f44336;
+}
