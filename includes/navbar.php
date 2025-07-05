@@ -20,7 +20,7 @@ if (count($request_parts) > 0) {
 }
 
 // Verificar si estamos en un módulo específico - REGISTROS
-$is_produccion_mina = strpos($pagina_ruta, 'modulos/registros/produccion_mina') !== false;
+$is_mina = strpos($pagina_ruta, 'modulos/registros/mina') !== false;
 $is_planta = strpos($pagina_ruta, 'modulos/registros/planta') !== false;
 $is_amalgamacion = strpos($pagina_ruta, 'modulos/registros/amalgamacion') !== false;
 $is_flotacion = strpos($pagina_ruta, 'modulos/registros/flotacion') !== false;
@@ -137,8 +137,8 @@ $mostrar_administracion = $es_admin && ($permisos['admin_usuarios'] || $permisos
                 <div class="sidebar-section-title">Registros</div>
                 <ul class="sidebar-menu">
                     <?php if ($permisos['registros_produccion_mina']): ?>
-                        <li class="sidebar-menu-item <?php echo $is_produccion_mina ? 'active' : ''; ?>">
-                            <a href="<?php echo getPageUrl('modulos/registros/produccion_mina/index.php'); ?>" class="sidebar-menu-link">
+                        <li class="sidebar-menu-item <?php echo $is_mina ? 'active' : ''; ?>">
+                            <a href="<?php echo getPageUrl('modulos/registros/mina/index.php'); ?>" class="sidebar-menu-link">
                                 <i class="bi bi-minecart"></i>
                                 <span>Producción Mina</span>
                             </a>

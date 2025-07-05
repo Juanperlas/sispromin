@@ -13,6 +13,9 @@ let turnoSeleccionado;
 let modalTurno;
 let filtrosActivos = {};
 
+// IDs de turnos que no se pueden editar
+const TURNOS_NO_EDITABLES = [1, 2, 3, 4]; // <--- NUEVA CONSTANTE AQUÍ
+
 document.addEventListener("DOMContentLoaded", () => {
   // Función para obtener la URL base
   function getBaseUrl() {
@@ -80,7 +83,11 @@ document.addEventListener("DOMContentLoaded", () => {
             let acciones = '<div class="btn-group btn-group-sm">';
             acciones += `<button type="button" class="btn-accion btn-ver-turno" data-id="${data.id}" title="Ver detalles"><i class="bi bi-eye"></i></button>`;
 
-            if (tienePermiso("controles.mina.turnos.editar")) {
+            // Solo añade el botón de editar si tiene permiso y el ID no está en la lista de no editables
+            if (
+              tienePermiso("controles.mina.turnos.editar") &&
+              !TURNOS_NO_EDITABLES.includes(data.id) // <--- CONDICIÓN AÑADIDA
+            ) {
               acciones += `<button type="button" class="btn-accion btn-editar-turno" data-id="${data.id}" title="Editar"><i class="bi bi-pencil"></i></button>`;
             }
 
@@ -259,60 +266,64 @@ document.addEventListener("DOMContentLoaded", () => {
           turnoSeleccionado = data;
 
           $("#turno-detalle .detail-header").html(`
-                        <div class="d-flex justify-content-between align-items-center">
-                            <div>
-                                <h2 class="detail-title">Turno: ${data.nombre}</h2>
-                                <p class="detail-subtitle">Código: ${data.codigo}</p>
-                            </div>
-                        </div>
-                    `);
+                          <div class="d-flex justify-content-between align-items-center">
+                              <div>
+                                  <h2 class="detail-title">Turno: ${data.nombre}</h2>
+                                  <p class="detail-subtitle">Código: ${data.codigo}</p>
+                              </div>
+                          </div>
+                      `);
 
           const infoBasica = `
-                        <div class="card-form mb-3">
-                            <div class="card-form-header">
-                                <i class="bi bi-info-circle me-2"></i>Información Básica
-                            </div>
-                            <div class="card-form-body">
-                                <div class="row g-2">
-                                    <div class="col-md-6">
-                                        <div class="form-group mb-2">
-                                            <label class="form-label form-label-sm">ID</label>
-                                            <div class="form-control form-control-sm bg-light">${
-                                              data.id
-                                            }</div>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <div class="form-group mb-2">
-                                            <label class="form-label form-label-sm">Código</label>
-                                            <div class="form-control form-control-sm bg-light">${
-                                              data.codigo
-                                            }</div>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-12">
-                                        <div class="form-group mb-2">
-                                            <label class="form-label form-label-sm">Nombre</label>
-                                            <div class="form-control form-control-sm bg-light">${
-                                              data.nombre
-                                            }</div>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-12">
-                                        <div class="form-group mb-2">
-                                            <label class="form-label form-label-sm">Fecha de Creación</label>
-                                            <div class="form-control form-control-sm bg-light">${formatearFecha(
-                                              data.creado_en
-                                            )}</div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    `;
+                          <div class="card-form mb-3">
+                              <div class="card-form-header">
+                                  <i class="bi bi-info-circle me-2"></i>Información Básica
+                              </div>
+                              <div class="card-form-body">
+                                  <div class="row g-2">
+                                      <div class="col-md-6">
+                                          <div class="form-group mb-2">
+                                              <label class="form-label form-label-sm">ID</label>
+                                              <div class="form-control form-control-sm bg-light">${
+                                                data.id
+                                              }</div>
+                                          </div>
+                                      </div>
+                                      <div class="col-md-6">
+                                          <div class="form-group mb-2">
+                                              <label class="form-label form-label-sm">Código</label>
+                                              <div class="form-control form-control-sm bg-light">${
+                                                data.codigo
+                                              }</div>
+                                          </div>
+                                      </div>
+                                      <div class="col-md-12">
+                                          <div class="form-group mb-2">
+                                              <label class="form-label form-label-sm">Nombre</label>
+                                              <div class="form-control form-control-sm bg-light">${
+                                                data.nombre
+                                              }</div>
+                                          </div>
+                                      </div>
+                                      <div class="col-md-12">
+                                          <div class="form-group mb-2">
+                                              <label class="form-label form-label-sm">Fecha de Creación</label>
+                                              <div class="form-control form-control-sm bg-light">${formatearFecha(
+                                                data.creado_en
+                                              )}</div>
+                                          </div>
+                                      </div>
+                                  </div>
+                              </div>
+                          </div>
+                      `;
 
           let botonEditar = "";
-          if (tienePermiso("controles.mina.turnos.editar")) {
+          // Solo muestra el botón de editar si tiene permiso y el ID no está en la lista de no editables
+          if (
+            tienePermiso("controles.mina.turnos.editar") &&
+            !TURNOS_NO_EDITABLES.includes(data.id) // <--- CONDICIÓN AÑADIDA
+          ) {
             botonEditar = `
                             <div class="d-grid gap-2 mt-3">
                                 <button type="button" id="btn-editar-panel" class="btn btn-warning" data-id="${data.id}">
@@ -323,38 +334,41 @@ document.addEventListener("DOMContentLoaded", () => {
           }
 
           $("#turno-detalle .detail-content").html(`
-                        ${infoBasica}
-                        ${botonEditar}
-                    `);
+                          ${infoBasica}
+                          ${botonEditar}
+                      `);
 
-          $("#btn-editar-panel").on("click", function () {
-            const id = $(this).data("id");
-            abrirModalEditar(id);
-          });
+          // Solo adjunta el evento si el botón fue agregado
+          if (botonEditar) { // <--- CONDICIÓN AÑADIDA
+            $("#btn-editar-panel").on("click", function () {
+              const id = $(this).data("id");
+              abrirModalEditar(id);
+            });
+          }
         } else {
           $("#turno-detalle .detail-content").html(`
-                        <div class="detail-empty">
-                            <div class="detail-empty-icon">
-                                <i class="bi bi-exclamation-triangle"></i>
-                            </div>
-                            <div class="detail-empty-text">
-                                Error al cargar los detalles del turno
-                            </div>
-                        </div>
-                    `);
+                          <div class="detail-empty">
+                              <div class="detail-empty-icon">
+                                  <i class="bi bi-exclamation-triangle"></i>
+                              </div>
+                              <div class="detail-empty-text">
+                                  Error al cargar los detalles del turno
+                              </div>
+                          </div>
+                      `);
         }
       },
       error: (xhr, status, error) => {
         $("#turno-detalle .detail-content").html(`
-                    <div class="detail-empty">
-                        <div class="detail-empty-icon">
-                            <i class="bi bi-exclamation-triangle"></i>
-                        </div>
-                        <div class="detail-empty-text">
-                            Error de conexión al servidor
-                        </div>
-                    </div>
-                `);
+                      <div class="detail-empty">
+                          <div class="detail-empty-icon">
+                              <i class="bi bi-exclamation-triangle"></i>
+                          </div>
+                          <div class="detail-empty-text">
+                              Error de conexión al servidor
+                          </div>
+                      </div>
+                  `);
         console.error("Error al obtener detalles del turno:", error);
       },
     });
@@ -372,6 +386,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Función para abrir modal de editar turno
   function abrirModalEditar(id) {
+    // Si el ID del turno está en la lista de no editables, no abrir el modal y mostrar un mensaje
+    if (TURNOS_NO_EDITABLES.includes(id)) { // <--- CONDICIÓN AÑADIDA
+      if (window.showErrorToast) {
+        window.showErrorToast("Este turno no puede ser editado.");
+      }
+      return; // Detener la ejecución de la función
+    }
+
     showLoadingOverlay();
 
     $.ajax({
@@ -516,15 +538,15 @@ document.addEventListener("DOMContentLoaded", () => {
     turnosTable.ajax.reload();
 
     $("#turno-detalle .detail-content").html(`
-            <div class="detail-empty">
-                <div class="detail-empty-icon">
-                    <i class="bi bi-info-circle"></i>
-                </div>
-                <div class="detail-empty-text">
-                    Seleccione un turno para ver sus detalles
-                </div>
-            </div>
-        `);
+              <div class="detail-empty">
+                  <div class="detail-empty-icon">
+                      <i class="bi bi-info-circle"></i>
+                  </div>
+                  <div class="detail-empty-text">
+                      Seleccione un turno para ver sus detalles
+                  </div>
+              </div>
+          `);
     $("#turno-detalle").removeClass("active");
     turnoSeleccionado = null;
   }
@@ -543,15 +565,15 @@ document.addEventListener("DOMContentLoaded", () => {
     turnosTable.ajax.reload();
 
     $("#turno-detalle .detail-content").html(`
-            <div class="detail-empty">
-                <div class="detail-empty-icon">
-                    <i class="bi bi-info-circle"></i>
-                </div>
-                <div class="detail-empty-text">
-                    Seleccione un turno para ver sus detalles
-                </div>
-            </div>
-        `);
+              <div class="detail-empty">
+                  <div class="detail-empty-icon">
+                      <i class="bi bi-info-circle"></i>
+                  </div>
+                  <div class="detail-empty-text">
+                      Seleccione un turno para ver sus detalles
+                  </div>
+              </div>
+          `);
     $("#turno-detalle").removeClass("active");
     turnoSeleccionado = null;
   }

@@ -35,6 +35,18 @@ $nombre = isset($_POST["nombre"]) ? sanitizar($_POST["nombre"]) : "";
 // Determinar si es creación o edición
 $esEdicion = $id > 0;
 
+// --- INICIO DEL CAMBIO ---
+// IDs de los turnos predefinidos que no se pueden editar
+$turnos_predefinidos_ids = [1, 2, 3, 4];
+
+// Si es una operación de edición y el ID está en la lista de predefinidos
+if ($esEdicion && in_array($id, $turnos_predefinidos_ids)) {
+    http_response_code(403); // Código de estado Forbidden (Prohibido)
+    echo json_encode(["success" => false, "message" => "Este turno es predefinido y no se puede editar."]);
+    exit;
+}
+// --- FIN DEL CAMBIO ---
+
 // Verificar permisos según la operación
 if ($esEdicion) {
     if (!tienePermiso("controles.mina.turnos.editar")) {

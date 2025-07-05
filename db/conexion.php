@@ -1,4 +1,6 @@
 <?php
+date_default_timezone_set('America/Lima');
+
 class Conexion
 {
     private $host = 'localhost';
@@ -8,7 +10,6 @@ class Conexion
     private $charset = 'utf8mb4';
     private $conn;
 
-    /*************  ✨ Windsurf Command ⭐  *************/
     /**
      * Constructor de la clase Conexion.
      *

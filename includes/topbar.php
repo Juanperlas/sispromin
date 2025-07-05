@@ -1,5 +1,4 @@
 <?php
-// Asumimos que $usuario ya está definido (desde getUsuarioActual())
 $rol_mostrado = isset($usuario['roles']) && !empty($usuario['roles']) ? ucfirst($usuario['roles'][0]) : 'Usuario';
 ?>
 <!-- Topbar -->

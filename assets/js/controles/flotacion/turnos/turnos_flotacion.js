@@ -26,6 +26,10 @@ document.addEventListener("DOMContentLoaded", () => {
     return getBaseUrl() + path;
   }
 
+  // Array de IDs predefinidos que no se pueden editar.
+  // ¡Este es un cambio clave que usaremos en múltiples lugares!
+  const TURNOS_PREDEFINIDOS_IDS = [1, 2, 3, 4]; // Define los IDs aquí
+
   // Inicializar DataTable
   function initDataTable() {
     turnosTable = $("#turnos-table").DataTable({
@@ -82,9 +86,16 @@ document.addEventListener("DOMContentLoaded", () => {
             let acciones = '<div class="btn-group btn-group-sm">';
             acciones += `<button type="button" class="btn-accion btn-ver-turno" data-id="${data.id}" title="Ver detalles"><i class="bi bi-eye"></i></button>`;
 
-            if (tienePermiso("controles.flotacion.turnos.editar")) {
+            // --- CAMBIO 1: Ocultar botón de editar en la tabla ---
+            // Solo muestra el botón de editar si el usuario tiene permiso
+            // Y el ID del turno NO está en la lista de turnos predefinidos.
+            if (
+              tienePermiso("controles.flotacion.turnos.editar") &&
+              !TURNOS_PREDEFINIDOS_IDS.includes(data.id)
+            ) {
               acciones += `<button type="button" class="btn-accion btn-editar-turno" data-id="${data.id}" title="Editar"><i class="bi bi-pencil"></i></button>`;
             }
+            // --- FIN CAMBIO 1 ---
 
             acciones += "</div>";
             return acciones;
@@ -258,7 +269,10 @@ document.addEventListener("DOMContentLoaded", () => {
       </div>
     `);
 
+    // --- CAMBIO 2: Ocultar botón de editar en el modal de detalles al iniciar la carga ---
     $("#btn-editar-desde-modal").hide();
+    // --- FIN CAMBIO 2 ---
+
     modalVerTurno.show();
 
     $.ajax({
@@ -325,8 +339,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
           $("#modal-ver-turno-body").html(contenidoModal);
 
-          // Mostrar botón de editar si tiene permisos
-          if (tienePermiso("controles.flotacion.turnos.editar")) {
+          // --- CAMBIO 3: Lógica para mostrar/ocultar el botón "Editar desde Modal" ---
+          // Solo muestra el botón de editar si el usuario tiene permisos
+          // Y el ID del turno NO está en la lista de turnos predefinidos.
+          if (
+            tienePermiso("controles.flotacion.turnos.editar") &&
+            !TURNOS_PREDEFINIDOS_IDS.includes(data.id)
+          ) {
             $("#btn-editar-desde-modal")
               .show()
               .off("click")
@@ -336,7 +355,10 @@ document.addEventListener("DOMContentLoaded", () => {
                   abrirModalEditar(data.id);
                 }, 300);
               });
+          } else {
+            $("#btn-editar-desde-modal").hide(); // Asegúrate de que esté oculto si no cumple la condición
           }
+          // --- FIN CAMBIO 3 ---
         } else {
           $("#modal-ver-turno-body").html(`
             <div class="alert alert-danger">
@@ -429,25 +451,38 @@ document.addEventListener("DOMContentLoaded", () => {
                     `;
 
           let botonEditar = "";
-          if (tienePermiso("controles.flotacion.turnos.editar")) {
+          // --- CAMBIO 4: Lógica para mostrar/ocultar el botón "Editar Turno" en el panel lateral ---
+          // Solo genera el HTML del botón de editar si el usuario tiene permisos
+          // Y el ID del turno NO está en la lista de turnos predefinidos.
+          if (
+            tienePermiso("controles.flotacion.turnos.editar") &&
+            !TURNOS_PREDEFINIDOS_IDS.includes(data.id)
+          ) {
             botonEditar = `
-                            <div class="d-grid gap-2 mt-3">
-                                <button type="button" id="btn-editar-panel" class="btn btn-warning" data-id="${data.id}">
-                                    <i class="bi bi-pencil me-2"></i>Editar Turno
-                                </button>
-                            </div>
-                        `;
+                                <div class="d-grid gap-2 mt-3">
+                                    <button type="button" id="btn-editar-panel" class="btn btn-warning" data-id="${data.id}">
+                                        <i class="bi bi-pencil me-2"></i>Editar Turno
+                                    </button>
+                                </div>
+                            `;
           }
+          // --- FIN CAMBIO 4 ---
 
           $("#turno-detalle .detail-content").html(`
                         ${infoBasica}
                         ${botonEditar}
                     `);
 
-          $("#btn-editar-panel").on("click", function () {
-            const id = $(this).data("id");
-            abrirModalEditar(id);
-          });
+          // Solo adjunta el evento si el botón de editar fue generado
+          if (
+            tienePermiso("controles.flotacion.turnos.editar") &&
+            !TURNOS_PREDEFINIDOS_IDS.includes(data.id)
+          ) {
+            $("#btn-editar-panel").on("click", function () {
+              const id = $(this).data("id");
+              abrirModalEditar(id);
+            });
+          }
         } else {
           $("#turno-detalle .detail-content").html(`
                         <div class="detail-empty">
@@ -489,6 +524,17 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Función para abrir modal de editar turno
   function abrirModalEditar(id) {
+    // --- CAMBIO 5: Prevenir la edición de IDs predefinidos al abrir el modal de edición directamente ---
+    if (TURNOS_PREDEFINIDOS_IDS.includes(id)) {
+      if (window.showErrorToast) {
+        window.showErrorToast(
+          "Este turno es predefinido y no se puede editar."
+        );
+      }
+      return; // Detiene la ejecución si el ID es predefinido
+    }
+    // --- FIN CAMBIO 5 ---
+
     showLoadingOverlay();
 
     $.ajax({
@@ -535,10 +581,22 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
+    const id = $("#turno-id").val();
+    // --- CAMBIO 6: Prevenir el guardado de IDs predefinidos si de alguna manera se manipuló el formulario ---
+    if (id && TURNOS_PREDEFINIDOS_IDS.includes(parseInt(id))) {
+      if (window.showErrorToast) {
+        window.showErrorToast(
+          "No se puede guardar cambios en un turno predefinido."
+        );
+      }
+      hideLoadingOverlay(); // Asegúrate de ocultar el overlay si estaba visible
+      return;
+    }
+    // --- FIN CAMBIO 6 ---
+
     showLoadingOverlay();
 
     const formData = new FormData();
-    const id = $("#turno-id").val();
 
     if (id) {
       formData.append("id", id);

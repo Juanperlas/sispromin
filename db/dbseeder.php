@@ -1,8 +1,8 @@
 <?php
 require_once __DIR__ . '/conexion.php';
 
-echo "=== SISPROMIN DATABASE SEEDER ACTUALIZADO ===\n";
-echo "Iniciando el proceso de seeding con nueva estructura...\n\n";
+echo "=== SISPROMIN DATABASE SEEDER OPTIMIZADO ===\n";
+echo "Iniciando el proceso de seeding con usuarios y turnos optimizados...\n\n";
 
 try {
     $conexion = new Conexion();
@@ -21,16 +21,31 @@ function encriptarContrasena($contrasena)
 $conexion->query("SET FOREIGN_KEY_CHECKS = 0");
 
 // Limpiar tablas de usuarios y preferencias
-$tablas = ['usuarios_roles', 'preferencias_usuarios', 'sesiones_usuarios', 'usuarios', 'roles_permisos'];
-foreach ($tablas as $tabla) {
+$tablas_a_limpiar = ['usuarios_roles', 'preferencias_usuarios', 'sesiones_usuarios', 'usuarios', 'roles_permisos'];
+foreach ($tablas_a_limpiar as $tabla) {
     $conexion->query("TRUNCATE TABLE $tabla");
     echo "🧹 Tabla $tabla limpiada.\n";
 }
 
+// Limpiar tablas de controles (si quieres reiniciar los turnos y frentes cada vez)
+// Nota: Si no quieres que estos datos se trunquen cada vez que corres el seeder,
+// puedes comentar estas líneas.
+$tablas_controles = [
+    'turnos_mina', 'frentes_mina',
+    'turnos_planta', 'lineas_planta', 'concentrados_planta',
+    'turnos_amalgamacion', 'lineas_amalgamacion', 'amalgamadores', 'cargas_amalgamacion',
+    'turnos_flotacion', 'productos_flotacion'
+];
+foreach ($tablas_controles as $tabla) {
+    $conexion->query("TRUNCATE TABLE $tabla");
+    echo "🧹 Tabla $tabla limpiada.\n";
+}
+
+
 // Reactivar restricciones de claves foráneas
 $conexion->query("SET FOREIGN_KEY_CHECKS = 1");
 
-echo "\n📝 Creando usuarios especializados...\n";
+echo "\n📝 Creando usuarios principales...\n";
 
 // Insertar superadmin con creado_por NULL
 $superadmin_id = $conexion->insert('usuarios', [
@@ -48,9 +63,8 @@ $superadmin_id = $conexion->insert('usuarios', [
     'esta_activo' => 1
 ]);
 
-// Insertar usuarios especializados
+// Insertar usuarios especializados (uno por cada rol principal)
 $usuarios = [
-    // ADMINISTRADORES
     [
         'username' => 'admin',
         'contrasena' => encriptarContrasena('admin123'),
@@ -65,29 +79,14 @@ $usuarios = [
         'token_recordatorio' => null,
         'esta_activo' => 1
     ],
-    // JEFES Y SUPERVISORES
     [
-        'username' => 'jefe_operaciones',
-        'contrasena' => encriptarContrasena('jefe123'),
-        'nombre_completo' => 'Jefe de Operaciones',
-        'correo' => 'jefe.operaciones@sispromin.com',
-        'dni' => '45678912',
-        'telefono' => '923456789',
-        'direccion' => 'Av. Mina 789',
-        'area' => 'Operaciones',
-        'fotografia' => null,
-        'creado_por' => $superadmin_id,
-        'token_recordatorio' => null,
-        'esta_activo' => 1
-    ],
-    [
-        'username' => 'supervisor_mina',
+        'username' => 'usuario_mina',
         'contrasena' => encriptarContrasena('mina123'),
-        'nombre_completo' => 'Supervisor de Mina',
-        'correo' => 'supervisor.mina@sispromin.com',
+        'nombre_completo' => 'Usuario Mina',
+        'correo' => 'usuario.mina@sispromin.com',
         'dni' => '11111111',
         'telefono' => '911111111',
-        'direccion' => 'Zona Mina A',
+        'direccion' => 'Zona Mina',
         'area' => 'Mina',
         'fotografia' => null,
         'creado_por' => $superadmin_id,
@@ -95,13 +94,13 @@ $usuarios = [
         'esta_activo' => 1
     ],
     [
-        'username' => 'supervisor_planta',
+        'username' => 'usuario_planta',
         'contrasena' => encriptarContrasena('planta123'),
-        'nombre_completo' => 'Supervisor de Planta',
-        'correo' => 'supervisor.planta@sispromin.com',
+        'nombre_completo' => 'Usuario Planta',
+        'correo' => 'usuario.planta@sispromin.com',
         'dni' => '22222222',
         'telefono' => '922222222',
-        'direccion' => 'Zona Planta B',
+        'direccion' => 'Zona Planta',
         'area' => 'Planta',
         'fotografia' => null,
         'creado_por' => $superadmin_id,
@@ -109,13 +108,13 @@ $usuarios = [
         'esta_activo' => 1
     ],
     [
-        'username' => 'supervisor_amalgamacion',
+        'username' => 'usuario_amalgamacion',
         'contrasena' => encriptarContrasena('amalgama123'),
-        'nombre_completo' => 'Supervisor de Amalgamación',
-        'correo' => 'supervisor.amalgamacion@sispromin.com',
+        'nombre_completo' => 'Usuario Amalgamación',
+        'correo' => 'usuario.amalgamacion@sispromin.com',
         'dni' => '33333333',
         'telefono' => '933333333',
-        'direccion' => 'Zona Amalgamación C',
+        'direccion' => 'Zona Amalgamación',
         'area' => 'Amalgamación',
         'fotografia' => null,
         'creado_por' => $superadmin_id,
@@ -123,86 +122,14 @@ $usuarios = [
         'esta_activo' => 1
     ],
     [
-        'username' => 'supervisor_flotacion',
+        'username' => 'usuario_flotacion',
         'contrasena' => encriptarContrasena('flotacion123'),
-        'nombre_completo' => 'Supervisor de Flotación',
-        'correo' => 'supervisor.flotacion@sispromin.com',
+        'nombre_completo' => 'Usuario Flotación',
+        'correo' => 'usuario.flotacion@sispromin.com',
         'dni' => '44444444',
         'telefono' => '944444444',
-        'direccion' => 'Zona Flotación D',
+        'direccion' => 'Zona Flotación',
         'area' => 'Flotación',
-        'fotografia' => null,
-        'creado_por' => $superadmin_id,
-        'token_recordatorio' => null,
-        'esta_activo' => 1
-    ],
-    // OPERADORES
-    [
-        'username' => 'operador_mina',
-        'contrasena' => encriptarContrasena('opmina123'),
-        'nombre_completo' => 'Operador de Mina',
-        'correo' => 'operador.mina@sispromin.com',
-        'dni' => '55555555',
-        'telefono' => '955555555',
-        'direccion' => 'Campamento Mina',
-        'area' => 'Mina',
-        'fotografia' => null,
-        'creado_por' => $superadmin_id,
-        'token_recordatorio' => null,
-        'esta_activo' => 1
-    ],
-    [
-        'username' => 'operador_planta',
-        'contrasena' => encriptarContrasena('opplanta123'),
-        'nombre_completo' => 'Operador de Planta',
-        'correo' => 'operador.planta@sispromin.com',
-        'dni' => '66666666',
-        'telefono' => '966666666',
-        'direccion' => 'Campamento Planta',
-        'area' => 'Planta',
-        'fotografia' => null,
-        'creado_por' => $superadmin_id,
-        'token_recordatorio' => null,
-        'esta_activo' => 1
-    ],
-    [
-        'username' => 'operador_amalgamacion',
-        'contrasena' => encriptarContrasena('opamalgama123'),
-        'nombre_completo' => 'Operador de Amalgamación',
-        'correo' => 'operador.amalgamacion@sispromin.com',
-        'dni' => '77777777',
-        'telefono' => '977777777',
-        'direccion' => 'Campamento Amalgamación',
-        'area' => 'Amalgamación',
-        'fotografia' => null,
-        'creado_por' => $superadmin_id,
-        'token_recordatorio' => null,
-        'esta_activo' => 1
-    ],
-    [
-        'username' => 'operador_flotacion',
-        'contrasena' => encriptarContrasena('opflotacion123'),
-        'nombre_completo' => 'Operador de Flotación',
-        'correo' => 'operador.flotacion@sispromin.com',
-        'dni' => '88888888',
-        'telefono' => '988888888',
-        'direccion' => 'Campamento Flotación',
-        'area' => 'Flotación',
-        'fotografia' => null,
-        'creado_por' => $superadmin_id,
-        'token_recordatorio' => null,
-        'esta_activo' => 1
-    ],
-    // INVITADO
-    [
-        'username' => 'invitado',
-        'contrasena' => encriptarContrasena('invitado123'),
-        'nombre_completo' => 'Usuario Invitado',
-        'correo' => 'invitado@sispromin.com',
-        'dni' => '99999999',
-        'telefono' => '999999999',
-        'direccion' => null,
-        'area' => 'Externo',
         'fotografia' => null,
         'creado_por' => $superadmin_id,
         'token_recordatorio' => null,
@@ -210,7 +137,7 @@ $usuarios = [
     ]
 ];
 
-$usuario_ids = [$superadmin_id];
+$usuario_ids = [$superadmin_id]; // El ID del superadmin ya está en la lista
 foreach ($usuarios as $usuario) {
     $usuario_id = $conexion->insert('usuarios', $usuario);
     $usuario_ids[] = $usuario_id;
@@ -219,52 +146,71 @@ foreach ($usuarios as $usuario) {
 
 echo "\n🔐 Asignando roles a usuarios...\n";
 
-// Asignar roles a usuarios
-$usuarios_roles = [
-    [$usuario_ids[0], 1],  // superadmin -> superadmin
-    [$usuario_ids[1], 2],  // admin -> admin
-    [$usuario_ids[2], 3],  // jefe_operaciones -> jefe_operaciones
-    [$usuario_ids[3], 4],  // supervisor_mina -> supervisor_mina
-    [$usuario_ids[4], 5],  // supervisor_planta -> supervisor_planta
-    [$usuario_ids[5], 6],  // supervisor_amalgamacion -> supervisor_amalgamacion
-    [$usuario_ids[6], 7],  // supervisor_flotacion -> supervisor_flotacion
-    [$usuario_ids[7], 8],  // operador_mina -> operador_mina
-    [$usuario_ids[8], 9],  // operador_planta -> operador_planta
-    [$usuario_ids[9], 10], // operador_amalgamacion -> operador_amalgamacion
-    [$usuario_ids[10], 11], // operador_flotacion -> operador_flotacion
-    [$usuario_ids[11], 12], // invitado -> invitado
+// Mapeo de roles a usuarios (IDs de roles asumiendo el orden de inserción original)
+$roles_para_asignar = [
+    1, // superadmin -> superadmin (rol_id 1)
+    2, // admin -> admin (rol_id 2)
+    4, // usuario_mina -> supervisor_mina (rol_id 4)
+    5, // usuario_planta -> supervisor_planta (rol_id 5)
+    6, // usuario_amalgamacion -> supervisor_amalgamacion (rol_id 6)
+    7  // usuario_flotacion -> supervisor_flotacion (rol_id 7)
 ];
 
-$roles_nombres = [
-    'superadmin',
-    'admin',
-    'jefe_operaciones',
-    'supervisor_mina',
-    'supervisor_planta',
-    'supervisor_amalgamacion',
-    'supervisor_flotacion',
-    'operador_mina',
-    'operador_planta',
-    'operador_amalgamacion',
-    'operador_flotacion',
-    'invitado'
+// Nombres de roles para mensajes de consola
+$roles_nombres_consol = [
+    1 => 'superadmin',
+    2 => 'admin',
+    4 => 'supervisor_mina',
+    5 => 'supervisor_planta',
+    6 => 'supervisor_amalgamacion',
+    7 => 'supervisor_flotacion'
 ];
 
-foreach ($usuarios_roles as $index => $ur) {
+
+foreach ($usuario_ids as $index => $u_id) {
+    $rol_id_asignado = $roles_para_asignar[$index];
     $conexion->insert('usuarios_roles', [
-        'usuario_id' => $ur[0],
-        'rol_id' => $ur[1]
+        'usuario_id' => $u_id,
+        'rol_id' => $rol_id_asignado
     ]);
-    echo "🎭 Rol '{$roles_nombres[$index]}' asignado al usuario ID: {$ur[0]}\n";
+    echo "🎭 Rol '{$roles_nombres_consol[$rol_id_asignado]}' asignado al usuario ID: {$u_id}\n";
 }
 
 echo "\n🔥 ASIGNANDO PERMISOS A ROLES...\n";
 
-// Obtener todos los permisos existentes
-$todosLosPermisos = $conexion->select("SELECT id FROM permisos ORDER BY id");
+// Obtener todos los permisos existentes para una asignación eficiente
+$todosLosPermisos = $conexion->select("SELECT id, nombre FROM permisos ORDER BY id");
+$permisosPorNombre = [];
+foreach ($todosLosPermisos as $p) {
+    $permisosPorNombre[$p['nombre']] = $p['id'];
+}
 echo "📋 Total de permisos encontrados: " . count($todosLosPermisos) . "\n";
 
-// SUPERADMIN: Todos los permisos
+function asignarPermisos($conexion, $rol_id, $permisos_a_asignar, $permisosPorNombre, $nombre_rol) {
+    $count = 0;
+    foreach ($permisos_a_asignar as $permiso_nombre_patron) {
+        // Usa un patrón para seleccionar los permisos
+        $permisos_filtrados = array_filter($permisosPorNombre, function($k) use ($permiso_nombre_patron) {
+            return strpos($k, $permiso_nombre_patron) === 0;
+        }, ARRAY_FILTER_USE_KEY);
+
+        foreach ($permisos_filtrados as $permiso_id) {
+            try {
+                $conexion->insert('roles_permisos', [
+                    'rol_id' => $rol_id,
+                    'permiso_id' => $permiso_id
+                ]);
+                $count++;
+            } catch (Exception $e) {
+                // Ya existe la asignación, ignorar o loguear si es necesario
+            }
+        }
+    }
+    echo "✅ Permisos asignados al {$nombre_rol}: {$count}\n";
+}
+
+
+// SUPERADMIN: Todos los permisos (rol_id = 1)
 echo "🔥 Asignando TODOS los permisos al SUPERADMIN...\n";
 $permisosAsignados = 0;
 foreach ($todosLosPermisos as $permiso) {
@@ -275,12 +221,13 @@ foreach ($todosLosPermisos as $permiso) {
         ]);
         $permisosAsignados++;
     } catch (Exception $e) {
-        echo "⚠️ Error asignando permiso ID {$permiso['id']}: " . $e->getMessage() . "\n";
+        // Ignorar si ya existe
     }
 }
 echo "✅ Permisos asignados al superadmin: $permisosAsignados\n";
 
-// ADMIN: Todos los permisos
+
+// ADMIN: Todos los permisos (rol_id = 2)
 echo "🔥 Asignando TODOS los permisos al ADMIN...\n";
 $permisosAsignadosAdmin = 0;
 foreach ($todosLosPermisos as $permiso) {
@@ -291,387 +238,147 @@ foreach ($todosLosPermisos as $permiso) {
         ]);
         $permisosAsignadosAdmin++;
     } catch (Exception $e) {
-        echo "⚠️ Error asignando permiso ID {$permiso['id']} al admin: " . $e->getMessage() . "\n";
+        // Ignorar si ya existe
     }
 }
 echo "✅ Permisos asignados al admin: $permisosAsignadosAdmin\n";
 
-// JEFE OPERACIONES: Acceso a dashboard, registros y controles (no administración)
-echo "🔥 Asignando permisos al JEFE DE OPERACIONES...\n";
-$permisos_jefe = $conexion->select("
-    SELECT id FROM permisos 
-    WHERE nombre LIKE 'dashboard.%' 
-       OR nombre LIKE 'registros.%' 
-       OR nombre LIKE 'controles.%'
-       OR nombre LIKE 'administracion.reportes.%'
-");
-foreach ($permisos_jefe as $permiso) {
-    $conexion->insert('roles_permisos', [
-        'rol_id' => 3, // jefe_operaciones
-        'permiso_id' => $permiso['id']
-    ]);
-}
-echo "✅ Permisos asignados al jefe de operaciones: " . count($permisos_jefe) . "\n";
 
-// SUPERVISOR MINA: Dashboard + Registros/Controles de Mina
+// SUPERVISOR MINA (rol_id = 4): Dashboard + Registros/Controles de Mina
 echo "🔥 Asignando permisos al SUPERVISOR DE MINA...\n";
-$permisos_sup_mina = $conexion->select("
-    SELECT id FROM permisos 
-    WHERE nombre LIKE 'dashboard.%' 
-       OR nombre LIKE 'registros.produccion_mina.%'
-       OR nombre LIKE 'controles.mina.%'
-");
-foreach ($permisos_sup_mina as $permiso) {
-    $conexion->insert('roles_permisos', [
-        'rol_id' => 4, // supervisor_mina
-        'permiso_id' => $permiso['id']
-    ]);
-}
-echo "✅ Permisos asignados al supervisor de mina: " . count($permisos_sup_mina) . "\n";
+asignarPermisos($conexion, 4, [
+    'dashboard.',
+    'registros.produccion_mina.',
+    'controles.mina.'
+], $permisosPorNombre, 'supervisor de mina');
 
-// SUPERVISOR PLANTA: Dashboard + Registros/Controles de Planta
+// SUPERVISOR PLANTA (rol_id = 5): Dashboard + Registros/Controles de Planta
 echo "🔥 Asignando permisos al SUPERVISOR DE PLANTA...\n";
-$permisos_sup_planta = $conexion->select("
-    SELECT id FROM permisos 
-    WHERE nombre LIKE 'dashboard.%' 
-       OR nombre LIKE 'registros.planta.%'
-       OR nombre LIKE 'controles.planta.%'
-");
-foreach ($permisos_sup_planta as $permiso) {
-    $conexion->insert('roles_permisos', [
-        'rol_id' => 5, // supervisor_planta
-        'permiso_id' => $permiso['id']
-    ]);
-}
-echo "✅ Permisos asignados al supervisor de planta: " . count($permisos_sup_planta) . "\n";
+asignarPermisos($conexion, 5, [
+    'dashboard.',
+    'registros.planta.',
+    'controles.planta.'
+], $permisosPorNombre, 'supervisor de planta');
 
-// SUPERVISOR AMALGAMACIÓN: Dashboard + Registros/Controles de Amalgamación
+// SUPERVISOR AMALGAMACIÓN (rol_id = 6): Dashboard + Registros/Controles de Amalgamación
 echo "🔥 Asignando permisos al SUPERVISOR DE AMALGAMACIÓN...\n";
-$permisos_sup_amalgamacion = $conexion->select("
-    SELECT id FROM permisos 
-    WHERE nombre LIKE 'dashboard.%' 
-       OR nombre LIKE 'registros.amalgamacion.%'
-       OR nombre LIKE 'controles.amalgamacion.%'
-");
-foreach ($permisos_sup_amalgamacion as $permiso) {
-    $conexion->insert('roles_permisos', [
-        'rol_id' => 6, // supervisor_amalgamacion
-        'permiso_id' => $permiso['id']
-    ]);
-}
-echo "✅ Permisos asignados al supervisor de amalgamación: " . count($permisos_sup_amalgamacion) . "\n";
+asignarPermisos($conexion, 6, [
+    'dashboard.',
+    'registros.amalgamacion.',
+    'controles.amalgamacion.'
+], $permisosPorNombre, 'supervisor de amalgamación');
 
-// SUPERVISOR FLOTACIÓN: Dashboard + Registros/Controles de Flotación
+// SUPERVISOR FLOTACIÓN (rol_id = 7): Dashboard + Registros/Controles de Flotación
 echo "🔥 Asignando permisos al SUPERVISOR DE FLOTACIÓN...\n";
-$permisos_sup_flotacion = $conexion->select("
-    SELECT id FROM permisos 
-    WHERE nombre LIKE 'dashboard.%' 
-       OR nombre LIKE 'registros.flotacion.%'
-       OR nombre LIKE 'controles.flotacion.%'
-");
-foreach ($permisos_sup_flotacion as $permiso) {
-    $conexion->insert('roles_permisos', [
-        'rol_id' => 7, // supervisor_flotacion
-        'permiso_id' => $permiso['id']
-    ]);
-}
-echo "✅ Permisos asignados al supervisor de flotación: " . count($permisos_sup_flotacion) . "\n";
-
-// OPERADOR MINA: Dashboard + Solo registros de Mina (crear, ver, editar)
-echo "🔥 Asignando permisos al OPERADOR DE MINA...\n";
-$permisos_op_mina = $conexion->select("
-    SELECT id FROM permisos 
-    WHERE nombre LIKE 'dashboard.%' 
-       OR nombre LIKE 'registros.produccion_mina.%'
-");
-foreach ($permisos_op_mina as $permiso) {
-    $conexion->insert('roles_permisos', [
-        'rol_id' => 8, // operador_mina
-        'permiso_id' => $permiso['id']
-    ]);
-}
-echo "✅ Permisos asignados al operador de mina: " . count($permisos_op_mina) . "\n";
-
-// OPERADOR PLANTA: Dashboard + Solo registros de Planta
-echo "🔥 Asignando permisos al OPERADOR DE PLANTA...\n";
-$permisos_op_planta = $conexion->select("
-    SELECT id FROM permisos 
-    WHERE nombre LIKE 'dashboard.%' 
-       OR nombre LIKE 'registros.planta.%'
-");
-foreach ($permisos_op_planta as $permiso) {
-    $conexion->insert('roles_permisos', [
-        'rol_id' => 9, // operador_planta
-        'permiso_id' => $permiso['id']
-    ]);
-}
-echo "✅ Permisos asignados al operador de planta: " . count($permisos_op_planta) . "\n";
-
-// OPERADOR AMALGAMACIÓN: Dashboard + Solo registros de Amalgamación
-echo "🔥 Asignando permisos al OPERADOR DE AMALGAMACIÓN...\n";
-$permisos_op_amalgamacion = $conexion->select("
-    SELECT id FROM permisos 
-    WHERE nombre LIKE 'dashboard.%' 
-       OR nombre LIKE 'registros.amalgamacion.%'
-");
-foreach ($permisos_op_amalgamacion as $permiso) {
-    $conexion->insert('roles_permisos', [
-        'rol_id' => 10, // operador_amalgamacion
-        'permiso_id' => $permiso['id']
-    ]);
-}
-echo "✅ Permisos asignados al operador de amalgamación: " . count($permisos_op_amalgamacion) . "\n";
-
-// OPERADOR FLOTACIÓN: Dashboard + Solo registros de Flotación
-echo "🔥 Asignando permisos al OPERADOR DE FLOTACIÓN...\n";
-$permisos_op_flotacion = $conexion->select("
-    SELECT id FROM permisos 
-    WHERE nombre LIKE 'dashboard.%' 
-       OR nombre LIKE 'registros.flotacion.%'
-");
-foreach ($permisos_op_flotacion as $permiso) {
-    $conexion->insert('roles_permisos', [
-        'rol_id' => 11, // operador_flotacion
-        'permiso_id' => $permiso['id']
-    ]);
-}
-echo "✅ Permisos asignados al operador de flotación: " . count($permisos_op_flotacion) . "\n";
-
-// INVITADO: Solo visualización
-echo "🔥 Asignando permisos al INVITADO...\n";
-$permisos_invitado = $conexion->select("
-    SELECT id FROM permisos 
-    WHERE nombre LIKE '%.acceder' 
-       OR nombre LIKE '%.ver'
-       OR nombre LIKE 'dashboard.%'
-");
-foreach ($permisos_invitado as $permiso) {
-    $conexion->insert('roles_permisos', [
-        'rol_id' => 12, // invitado
-        'permiso_id' => $permiso['id']
-    ]);
-}
-echo "✅ Permisos asignados al invitado: " . count($permisos_invitado) . "\n";
+asignarPermisos($conexion, 7, [
+    'dashboard.',
+    'registros.flotacion.',
+    'controles.flotacion.'
+], $permisosPorNombre, 'supervisor de flotación');
 
 echo "\n⚙️ Creando preferencias de usuarios...\n";
 
-// Crear preferencias para cada usuario
-$preferencias = [
+// Crear preferencias para cada usuario (manteniendo el orden de $usuario_ids)
+$preferencias_data = [
     // Superadmin
     [
-        'usuario_id' => $usuario_ids[0],
-        'tema' => 'oscuro',
-        'idioma' => 'es',
-        'navbar_design' => 'modern',
-        'navbar_bg_color' => '#2c3e50',
-        'navbar_text_color' => '#ecf0f1',
-        'navbar_active_bg_color' => '#3498db',
-        'navbar_active_text_color' => '#ffffff',
-        'topbar_bg_color' => '#2c3e50',
-        'topbar_text_color' => '#ecf0f1',
-        'pagina_inicio' => 'dashboard',
-        'elementos_por_pagina' => 25
+        'usuario_id' => $usuario_ids[0], // superadmin
+        'tema' => 'oscuro', 'idioma' => 'es', 'navbar_design' => 'modern',
+        'navbar_bg_color' => '#2c3e50', 'navbar_text_color' => '#ecf0f1',
+        'navbar_active_bg_color' => '#3498db', 'navbar_active_text_color' => '#ffffff',
+        'topbar_bg_color' => '#2c3e50', 'topbar_text_color' => '#ecf0f1',
+        'pagina_inicio' => 'dashboard', 'elementos_por_pagina' => 25
     ],
     // Admin
     [
-        'usuario_id' => $usuario_ids[1],
-        'tema' => 'claro',
-        'idioma' => 'es',
-        'navbar_design' => 'classic',
-        'navbar_bg_color' => '#1571b0',
-        'navbar_text_color' => '#ffffff',
-        'navbar_active_bg_color' => '#ffffff',
-        'navbar_active_text_color' => '#1571b0',
-        'topbar_bg_color' => '#ffffff',
-        'topbar_text_color' => '#333333',
-        'pagina_inicio' => 'dashboard',
-        'elementos_por_pagina' => 50
+        'usuario_id' => $usuario_ids[1], // admin
+        'tema' => 'claro', 'idioma' => 'es', 'navbar_design' => 'classic',
+        'navbar_bg_color' => '#1571b0', 'navbar_text_color' => '#ffffff',
+        'navbar_active_bg_color' => '#ffffff', 'navbar_active_text_color' => '#1571b0',
+        'topbar_bg_color' => '#ffffff', 'topbar_text_color' => '#333333',
+        'pagina_inicio' => 'dashboard', 'elementos_por_pagina' => 50
     ],
-    // Jefe Operaciones
+    // Usuario Mina
     [
-        'usuario_id' => $usuario_ids[2],
-        'tema' => 'claro',
-        'idioma' => 'es',
-        'navbar_design' => 'minimal',
-        'navbar_bg_color' => '#e74c3c',
-        'navbar_text_color' => '#ffffff',
-        'navbar_active_bg_color' => '#f1c40f',
-        'navbar_active_text_color' => '#2c3e50',
-        'topbar_bg_color' => '#ffffff',
-        'topbar_text_color' => '#333333',
-        'pagina_inicio' => 'dashboard',
-        'elementos_por_pagina' => 25
+        'usuario_id' => $usuario_ids[2], // usuario_mina
+        'tema' => 'claro', 'idioma' => 'es', 'navbar_design' => 'default',
+        'navbar_bg_color' => '#8B4513', 'navbar_text_color' => '#ffffff',
+        'navbar_active_bg_color' => '#ffffff', 'navbar_active_text_color' => '#8B4513',
+        'topbar_bg_color' => '#ffffff', 'topbar_text_color' => '#333333',
+        'pagina_inicio' => 'dashboard', 'elementos_por_pagina' => 20
     ],
-    // Supervisor Mina
+    // Usuario Planta
     [
-        'usuario_id' => $usuario_ids[3],
-        'tema' => 'claro',
-        'idioma' => 'es',
-        'navbar_design' => 'default',
-        'navbar_bg_color' => '#8B4513',
-        'navbar_text_color' => '#ffffff',
-        'navbar_active_bg_color' => '#ffffff',
-        'navbar_active_text_color' => '#8B4513',
-        'topbar_bg_color' => '#ffffff',
-        'topbar_text_color' => '#333333',
-        'pagina_inicio' => 'dashboard',
-        'elementos_por_pagina' => 20
+        'usuario_id' => $usuario_ids[3], // usuario_planta
+        'tema' => 'claro', 'idioma' => 'es', 'navbar_design' => 'default',
+        'navbar_bg_color' => '#2E8B57', 'navbar_text_color' => '#ffffff',
+        'navbar_active_bg_color' => '#ffffff', 'navbar_active_text_color' => '#2E8B57',
+        'topbar_bg_color' => '#ffffff', 'topbar_text_color' => '#333333',
+        'pagina_inicio' => 'dashboard', 'elementos_por_pagina' => 20
     ],
-    // Supervisor Planta
+    // Usuario Amalgamación
     [
-        'usuario_id' => $usuario_ids[4],
-        'tema' => 'claro',
-        'idioma' => 'es',
-        'navbar_design' => 'default',
-        'navbar_bg_color' => '#2E8B57',
-        'navbar_text_color' => '#ffffff',
-        'navbar_active_bg_color' => '#ffffff',
-        'navbar_active_text_color' => '#2E8B57',
-        'topbar_bg_color' => '#ffffff',
-        'topbar_text_color' => '#333333',
-        'pagina_inicio' => 'dashboard',
-        'elementos_por_pagina' => 20
+        'usuario_id' => $usuario_ids[4], // usuario_amalgamacion
+        'tema' => 'claro', 'idioma' => 'es', 'navbar_design' => 'default',
+        'navbar_bg_color' => '#FF6347', 'navbar_text_color' => '#ffffff',
+        'navbar_active_bg_color' => '#ffffff', 'navbar_active_text_color' => '#FF6347',
+        'topbar_bg_color' => '#ffffff', 'topbar_text_color' => '#333333',
+        'pagina_inicio' => 'dashboard', 'elementos_por_pagina' => 20
     ],
-    // Supervisor Amalgamación
+    // Usuario Flotación
     [
-        'usuario_id' => $usuario_ids[5],
-        'tema' => 'claro',
-        'idioma' => 'es',
-        'navbar_design' => 'default',
-        'navbar_bg_color' => '#FF6347',
-        'navbar_text_color' => '#ffffff',
-        'navbar_active_bg_color' => '#ffffff',
-        'navbar_active_text_color' => '#FF6347',
-        'topbar_bg_color' => '#ffffff',
-        'topbar_text_color' => '#333333',
-        'pagina_inicio' => 'dashboard',
-        'elementos_por_pagina' => 20
-    ],
-    // Supervisor Flotación
-    [
-        'usuario_id' => $usuario_ids[6],
-        'tema' => 'claro',
-        'idioma' => 'es',
-        'navbar_design' => 'default',
-        'navbar_bg_color' => '#4169E1',
-        'navbar_text_color' => '#ffffff',
-        'navbar_active_bg_color' => '#ffffff',
-        'navbar_active_text_color' => '#4169E1',
-        'topbar_bg_color' => '#ffffff',
-        'topbar_text_color' => '#333333',
-        'pagina_inicio' => 'dashboard',
-        'elementos_por_pagina' => 20
-    ],
-    // Operador Mina
-    [
-        'usuario_id' => $usuario_ids[7],
-        'tema' => 'claro',
-        'idioma' => 'es',
-        'navbar_design' => 'default',
-        'navbar_bg_color' => '#A0522D',
-        'navbar_text_color' => '#ffffff',
-        'navbar_active_bg_color' => '#ffffff',
-        'navbar_active_text_color' => '#A0522D',
-        'topbar_bg_color' => '#ffffff',
-        'topbar_text_color' => '#333333',
-        'pagina_inicio' => 'dashboard',
-        'elementos_por_pagina' => 15
-    ],
-    // Operador Planta
-    [
-        'usuario_id' => $usuario_ids[8],
-        'tema' => 'claro',
-        'idioma' => 'es',
-        'navbar_design' => 'default',
-        'navbar_bg_color' => '#228B22',
-        'navbar_text_color' => '#ffffff',
-        'navbar_active_bg_color' => '#ffffff',
-        'navbar_active_text_color' => '#228B22',
-        'topbar_bg_color' => '#ffffff',
-        'topbar_text_color' => '#333333',
-        'pagina_inicio' => 'dashboard',
-        'elementos_por_pagina' => 15
-    ],
-    // Operador Amalgamación
-    [
-        'usuario_id' => $usuario_ids[9],
-        'tema' => 'claro',
-        'idioma' => 'es',
-        'navbar_design' => 'default',
-        'navbar_bg_color' => '#DC143C',
-        'navbar_text_color' => '#ffffff',
-        'navbar_active_bg_color' => '#ffffff',
-        'navbar_active_text_color' => '#DC143C',
-        'topbar_bg_color' => '#ffffff',
-        'topbar_text_color' => '#333333',
-        'pagina_inicio' => 'dashboard',
-        'elementos_por_pagina' => 15
-    ],
-    // Operador Flotación
-    [
-        'usuario_id' => $usuario_ids[10],
-        'tema' => 'claro',
-        'idioma' => 'es',
-        'navbar_design' => 'default',
-        'navbar_bg_color' => '#1E90FF',
-        'navbar_text_color' => '#ffffff',
-        'navbar_active_bg_color' => '#ffffff',
-        'navbar_active_text_color' => '#1E90FF',
-        'topbar_bg_color' => '#ffffff',
-        'topbar_text_color' => '#333333',
-        'pagina_inicio' => 'dashboard',
-        'elementos_por_pagina' => 15
-    ],
-    // Invitado
-    [
-        'usuario_id' => $usuario_ids[11],
-        'tema' => 'claro',
-        'idioma' => 'es',
-        'navbar_design' => 'default',
-        'navbar_bg_color' => '#6c757d',
-        'navbar_text_color' => '#ffffff',
-        'navbar_active_bg_color' => '#ffffff',
-        'navbar_active_text_color' => '#6c757d',
-        'topbar_bg_color' => '#ffffff',
-        'topbar_text_color' => '#333333',
-        'pagina_inicio' => 'dashboard',
-        'elementos_por_pagina' => 10
+        'usuario_id' => $usuario_ids[5], // usuario_flotacion
+        'tema' => 'claro', 'idioma' => 'es', 'navbar_design' => 'default',
+        'navbar_bg_color' => '#4169E1', 'navbar_text_color' => '#ffffff',
+        'navbar_active_bg_color' => '#ffffff', 'navbar_active_text_color' => '#4169E1',
+        'topbar_bg_color' => '#ffffff', 'topbar_text_color' => '#333333',
+        'pagina_inicio' => 'dashboard', 'elementos_por_pagina' => 20
     ]
 ];
 
-$usuarios_nombres = [
+$usuarios_nombres_pref = [
     'superadmin',
     'admin',
-    'jefe_operaciones',
-    'supervisor_mina',
-    'supervisor_planta',
-    'supervisor_amalgamacion',
-    'supervisor_flotacion',
-    'operador_mina',
-    'operador_planta',
-    'operador_amalgamacion',
-    'operador_flotacion',
-    'invitado'
+    'usuario_mina',
+    'usuario_planta',
+    'usuario_amalgamacion',
+    'usuario_flotacion'
 ];
 
-foreach ($preferencias as $index => $pref) {
+foreach ($preferencias_data as $index => $pref) {
     $conexion->insert('preferencias_usuarios', $pref);
-    echo "🎨 Preferencias creadas para usuario '{$usuarios_nombres[$index]}'\n";
+    echo "🎨 Preferencias creadas para usuario '{$usuarios_nombres_pref[$index]}'\n";
 }
 
-echo "\n🏭 Creando datos iniciales de controles...\n";
+echo "\n⏰ Insertando turnos fijos (T1, T2, T3, T4) en todas las tablas de turnos...\n";
 
-// Insertar datos iniciales para turnos de mina
-$turnos_mina_iniciales = [
-    ['codigo' => 'TM001', 'nombre' => 'Turno Día'],
-    ['codigo' => 'TM002', 'nombre' => 'Turno Noche'],
-    ['codigo' => 'TM003', 'nombre' => 'Turno Madrugada']
+$turnos_fijos = [
+    ['codigo' => 'T1', 'nombre' => 'Turno Mañana'],
+    ['codigo' => 'T2', 'nombre' => 'Turno Tarde'],
+    ['codigo' => 'T3', 'nombre' => 'Turno Noche'],
+    ['codigo' => 'T4', 'nombre' => 'Turno Día']
 ];
 
-foreach ($turnos_mina_iniciales as $turno) {
-    $conexion->insert('turnos_mina', $turno);
-    echo "⏰ Turno de mina '{$turno['nombre']}' creado\n";
+$tablas_turnos = ['turnos_mina', 'turnos_planta', 'turnos_amalgamacion', 'turnos_flotacion'];
+
+foreach ($tablas_turnos as $tabla_turno) {
+    echo "  -> Procesando tabla: {$tabla_turno}\n";
+    foreach ($turnos_fijos as $turno) {
+        try {
+            // Asegura que los IDs 1,2,3,4 se inserten primero y sean estos turnos
+            // Esto solo funciona en una tabla vacía. Si ya tiene datos, los IDs serán consecutivos.
+            // Para garantizar ID específicos, podrías usar INSERT INTO ... VALUES (1, 'T1', 'Turno Mañana'), ...
+            // Pero es más común que la aplicación maneje la inmutabilidad por `codigo` y `es_fijo`.
+            $conexion->insert($tabla_turno, $turno);
+            echo "    ✅ Turno '{$turno['codigo']} - {$turno['nombre']}' insertado en {$tabla_turno}.\n";
+        } catch (Exception $e) {
+            echo "    ⚠️ Advertencia: Turno '{$turno['codigo']}' ya existe en {$tabla_turno} o error al insertar. " . $e->getMessage() . "\n";
+        }
+    }
 }
+
+
+echo "\n🏭 Creando datos iniciales de controles adicionales...\n";
 
 // Insertar datos iniciales para frentes de mina
 $frentes_mina_iniciales = [
@@ -682,19 +389,12 @@ $frentes_mina_iniciales = [
 ];
 
 foreach ($frentes_mina_iniciales as $frente) {
-    $conexion->insert('frentes_mina', $frente);
-    echo "🏔️ Frente de mina '{$frente['nombre']}' creado\n";
-}
-
-// Insertar datos iniciales para turnos de planta
-$turnos_planta_iniciales = [
-    ['codigo' => 'TP001', 'nombre' => 'Turno Día Planta'],
-    ['codigo' => 'TP002', 'nombre' => 'Turno Noche Planta']
-];
-
-foreach ($turnos_planta_iniciales as $turno) {
-    $conexion->insert('turnos_planta', $turno);
-    echo "⏰ Turno de planta '{$turno['nombre']}' creado\n";
+    try {
+        $conexion->insert('frentes_mina', $frente);
+        echo "🏔️ Frente de mina '{$frente['nombre']}' creado\n";
+    } catch (Exception $e) {
+        echo "⚠️ Advertencia: Frente de mina '{$frente['nombre']}' ya existe. " . $e->getMessage() . "\n";
+    }
 }
 
 // Insertar datos iniciales para líneas de planta
@@ -705,8 +405,12 @@ $lineas_planta_iniciales = [
 ];
 
 foreach ($lineas_planta_iniciales as $linea) {
-    $conexion->insert('lineas_planta', $linea);
-    echo "🏭 Línea de planta '{$linea['nombre']}' creada\n";
+    try {
+        $conexion->insert('lineas_planta', $linea);
+        echo "🏭 Línea de planta '{$linea['nombre']}' creada\n";
+    } catch (Exception $e) {
+        echo "⚠️ Advertencia: Línea de planta '{$linea['nombre']}' ya existe. " . $e->getMessage() . "\n";
+    }
 }
 
 // Insertar datos iniciales para concentrados de planta
@@ -717,17 +421,19 @@ $concentrados_planta_iniciales = [
 ];
 
 foreach ($concentrados_planta_iniciales as $concentrado) {
-    $conexion->insert('concentrados_planta', $concentrado);
-    echo "🥇 Concentrado de planta '{$concentrado['nombre']}' creado\n";
+    try {
+        $conexion->insert('concentrados_planta', $concentrado);
+        echo "🥇 Concentrado de planta '{$concentrado['nombre']}' creado\n";
+    } catch (Exception $e) {
+        echo "⚠️ Advertencia: Concentrado de planta '{$concentrado['nombre']}' ya existe. " . $e->getMessage() . "\n";
+    }
 }
 
-echo "\n🔍 VERIFICACIÓN FINAL...\n";
+// Puedes añadir más inserciones para amalgamadores, cargas_amalgamacion, productos_flotacion si es necesario
+// para tener datos iniciales adicionales en esos controles.
 
-// Verificar permisos del superadmin
-$permisosSuperadmin = $conexion->select(
-    "SELECT COUNT(*) as total FROM roles_permisos WHERE rol_id = 1"
-);
-echo "🔐 Permisos del superadmin: " . $permisosSuperadmin[0]['total'] . "\n";
+
+echo "\n🔍 VERIFICACIÓN FINAL...\n";
 
 // Verificar usuarios creados
 $usuariosCreados = $conexion->select("SELECT COUNT(*) as total FROM usuarios");
@@ -744,37 +450,26 @@ $rolesPermisos = $conexion->select("
 
 echo "📊 Permisos por rol:\n";
 foreach ($rolesPermisos as $rp) {
-    echo "   • {$rp['rol']}: {$rp['total_permisos']} permisos\n";
+    echo "   • {$rp['rol']}: {$rp['total_permisos']} permisos\n";
 }
 
 echo "\n" . str_repeat("=", 60) . "\n";
-echo "🎉 SEEDER ACTUALIZADO COMPLETADO EXITOSAMENTE\n";
+echo "🎉 SEEDER OPTIMIZADO COMPLETADO EXITOSAMENTE\n";
 echo str_repeat("=", 60) . "\n";
 echo "📊 Resumen:\n";
-echo "   • Usuarios creados: " . count($usuario_ids) . "\n";
-echo "   • Roles especializados: " . count($roles_nombres) . "\n";
-echo "   • Preferencias personalizadas: " . count($preferencias) . "\n";
-echo "   • Permisos asignados al superadmin: $permisosAsignados\n";
-echo "   • Permisos asignados al admin: $permisosAsignadosAdmin\n";
-echo "   • Datos iniciales de controles creados\n";
+echo "   • Usuarios creados: " . count($usuario_ids) . "\n";
+echo "   • Roles especializados: " . count($roles_para_asignar) . "\n";
+echo "   • Preferencias personalizadas: " . count($preferencias_data) . "\n";
+echo "   • Turnos fijos (T1, T2, T3, T4) insertados en todas las tablas de turnos.\n";
+echo "   • Datos iniciales de controles adicionales creados.\n";
 
 echo "\n🔑 Credenciales de acceso:\n";
-echo "   ADMINISTRADORES:\n";
-echo "   • superadmin / admin123 (Acceso total)\n";
-echo "   • admin / admin123 (Administrador completo)\n";
-echo "\n   JEFES Y SUPERVISORES:\n";
-echo "   • jefe_operaciones / jefe123 (Jefe de operaciones)\n";
-echo "   • supervisor_mina / mina123 (Supervisor de mina)\n";
-echo "   • supervisor_planta / planta123 (Supervisor de planta)\n";
-echo "   • supervisor_amalgamacion / amalgama123 (Supervisor de amalgamación)\n";
-echo "   • supervisor_flotacion / flotacion123 (Supervisor de flotación)\n";
-echo "\n   OPERADORES:\n";
-echo "   • operador_mina / opmina123 (Operador de mina)\n";
-echo "   • operador_planta / opplanta123 (Operador de planta)\n";
-echo "   • operador_amalgamacion / opamalgama123 (Operador de amalgamación)\n";
-echo "   • operador_flotacion / opflotacion123 (Operador de flotación)\n";
-echo "\n   OTROS:\n";
-echo "   • invitado / invitado123 (Solo lectura)\n";
+echo "   • superadmin / admin123 (Acceso total)\n";
+echo "   • admin / admin123 (Administrador completo)\n";
+echo "   • usuario_mina / mina123 (Producción de Mina)\n";
+echo "   • usuario_planta / planta123 (Planta)\n";
+echo "   • usuario_amalgamacion / amalgama123 (Amalgamación)\n";
+echo "   • usuario_flotacion / flotacion123 (Flotación)\n";
 
 echo "\n✅ Base de datos actualizada y lista para usar!\n";
 echo "🎯 Cada usuario tiene permisos específicos para su área de trabajo.\n";

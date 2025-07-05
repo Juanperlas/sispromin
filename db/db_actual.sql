@@ -150,7 +150,7 @@ CREATE TABLE concentrados_planta (
     codigo VARCHAR(50) NOT NULL UNIQUE,
     nombre VARCHAR(100) NOT NULL,
     creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    INDEX idx_codigo (codigo)
+    INDEX idx_codigo (codigo)   
 );
 
 -- CONTROLES AMALGAMACIÓN
@@ -210,6 +210,7 @@ CREATE TABLE productos_flotacion (
 -- Tabla de Registro de Producción de Mina
 CREATE TABLE produccion_mina (
     id INT AUTO_INCREMENT PRIMARY KEY,
+    codigo_registro VARCHAR(20) NOT NULL UNIQUE COMMENT 'Codigo unico del registro (ej. RM250704T1)',
     fecha DATE NOT NULL,
     turno_id INT NOT NULL,
     frente_id INT NOT NULL,
@@ -221,12 +222,14 @@ CREATE TABLE produccion_mina (
     FOREIGN KEY (frente_id) REFERENCES frentes_mina(id) ON DELETE RESTRICT,
     INDEX idx_fecha (fecha),
     INDEX idx_turno_id (turno_id),
-    INDEX idx_frente_id (frente_id)
+    INDEX idx_frente_id (frente_id),
+    INDEX idx_codigo_registro (codigo_registro) -- Indice para busquedas rapidas por este codigo
 );
 
 -- Tabla de Registro de Planta
 CREATE TABLE planta (
     id INT AUTO_INCREMENT PRIMARY KEY,
+    codigo_registro VARCHAR(20) NOT NULL UNIQUE COMMENT 'Codigo unico del registro (ej. RP250704T1)',
     fecha DATE NOT NULL,
     turno_id INT NOT NULL,
     linea_id INT NOT NULL,
@@ -241,12 +244,14 @@ CREATE TABLE planta (
     FOREIGN KEY (concentrado_id) REFERENCES concentrados_planta(id) ON DELETE RESTRICT,
     INDEX idx_fecha (fecha),
     INDEX idx_turno_id (turno_id),
-    INDEX idx_linea_id (linea_id)
+    INDEX idx_linea_id (linea_id),  
+    INDEX idx_codigo_registro (codigo_registro)
 );
 
 -- Tabla de Registro de Amalgamación
 CREATE TABLE amalgamacion (
     id INT AUTO_INCREMENT PRIMARY KEY,
+    codigo_registro VARCHAR(20) NOT NULL UNIQUE COMMENT 'Codigo unico del registro (ej. RA250704T1)',
     fecha DATE NOT NULL,
     turno_id INT NOT NULL,
     linea_id INT NOT NULL,
@@ -254,7 +259,12 @@ CREATE TABLE amalgamacion (
     cantidad_carga_concentrados DECIMAL(15,1) NOT NULL,
     carga_id INT NOT NULL,
     carga_mercurio_kg DECIMAL(15,2) NOT NULL,
+    soda_caustica_kg DECIMAL(15,2),
+    detergente_kg DECIMAL(15,2),
+    cal_kg DECIMAL(15,2),
+    lejia_litros DECIMAL(15,2),
     amalgamacion_gramos DECIMAL(15,2) NOT NULL,
+    factor_conversion_amalg_au DECIMAL(15, 3) NOT NULL DEFAULT 3.3,
     mercurio_recuperado_kg DECIMAL(15,2),
     creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (turno_id) REFERENCES turnos_amalgamacion(id) ON DELETE RESTRICT,
@@ -263,12 +273,14 @@ CREATE TABLE amalgamacion (
     FOREIGN KEY (carga_id) REFERENCES cargas_amalgamacion(id) ON DELETE RESTRICT,
     INDEX idx_fecha (fecha),
     INDEX idx_turno_id (turno_id),
-    INDEX idx_linea_id (linea_id)
+    INDEX idx_linea_id (linea_id),
+    INDEX idx_codigo_registro (codigo_registro)
 );
 
 -- Tabla de Registro de Flotación
 CREATE TABLE flotacion (
     id INT AUTO_INCREMENT PRIMARY KEY,
+    codigo_registro VARCHAR(20) NOT NULL UNIQUE COMMENT 'Codigo unico del registro (ej. RF250704T1)',
     fecha DATE NOT NULL,
     turno_id INT NOT NULL,
     carga_mineral_promedio DECIMAL(15,2) NOT NULL,
@@ -278,7 +290,8 @@ CREATE TABLE flotacion (
     creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (turno_id) REFERENCES turnos_flotacion(id) ON DELETE RESTRICT,
     INDEX idx_fecha (fecha),
-    INDEX idx_turno_id (turno_id)
+    INDEX idx_turno_id (turno_id),
+    INDEX idx_codigo_registro (codigo_registro)
 );
 
 -- Tabla Intermedia para Productos Químicos en Flotación

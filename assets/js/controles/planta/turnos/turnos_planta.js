@@ -15,6 +15,9 @@ let modalTurno;
 let filtrosActivos = {};
 
 document.addEventListener("DOMContentLoaded", () => {
+  // IDs que no deben permitir edición
+  const IDS_NO_EDITABLES = [1, 2, 3, 4];
+
   // Función para obtener la URL base
   function getBaseUrl() {
     return window.location.pathname.split("/modulos/")[0] + "/";
@@ -81,7 +84,11 @@ document.addEventListener("DOMContentLoaded", () => {
             let acciones = '<div class="btn-group btn-group-sm">';
             acciones += `<button type="button" class="btn-accion btn-ver-turno" data-id="${data.id}" title="Ver detalles"><i class="bi bi-eye"></i></button>`;
 
-            if (tienePermiso("controles.planta.turnos.editar")) {
+            // Ocultar botón de editar si el ID está en la lista de no editables
+            if (
+              tienePermiso("controles.planta.turnos.editar") &&
+              !IDS_NO_EDITABLES.includes(parseInt(data.id))
+            ) {
               acciones += `<button type="button" class="btn-accion btn-editar-turno" data-id="${data.id}" title="Editar"><i class="bi bi-pencil"></i></button>`;
             }
 
@@ -260,102 +267,109 @@ document.addEventListener("DOMContentLoaded", () => {
           turnoSeleccionado = data;
 
           $("#turno-detalle .detail-header").html(`
-                        <div class="d-flex justify-content-between align-items-center">
-                            <div>
-                                <h2 class="detail-title">Turno: ${data.nombre}</h2>
-                                <p class="detail-subtitle">Código: ${data.codigo}</p>
-                            </div>
-                        </div>
-                    `);
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <h2 class="detail-title">Turno: ${data.nombre}</h2>
+                                        <p class="detail-subtitle">Código: ${data.codigo}</p>
+                                    </div>
+                                </div>
+                            `);
 
           const infoBasica = `
-                        <div class="card-form mb-3">
-                            <div class="card-form-header">
-                                <i class="bi bi-info-circle me-2"></i>Información Básica
-                            </div>
-                            <div class="card-form-body">
-                                <div class="row g-2">
-                                    <div class="col-md-6">
-                                        <div class="form-group mb-2">
-                                            <label class="form-label form-label-sm">ID</label>
-                                            <div class="form-control form-control-sm bg-light">${
-                                              data.id
-                                            }</div>
-                                        </div>
+                                <div class="card-form mb-3">
+                                    <div class="card-form-header">
+                                        <i class="bi bi-info-circle me-2"></i>Información Básica
                                     </div>
-                                    <div class="col-md-6">
-                                        <div class="form-group mb-2">
-                                            <label class="form-label form-label-sm">Código</label>
-                                            <div class="form-control form-control-sm bg-light">${
-                                              data.codigo
-                                            }</div>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-12">
-                                        <div class="form-group mb-2">
-                                            <label class="form-label form-label-sm">Nombre</label>
-                                            <div class="form-control form-control-sm bg-light">${
-                                              data.nombre
-                                            }</div>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-12">
-                                        <div class="form-group mb-2">
-                                            <label class="form-label form-label-sm">Fecha de Creación</label>
-                                            <div class="form-control form-control-sm bg-light">${formatearFecha(
-                                              data.creado_en
-                                            )}</div>
+                                    <div class="card-form-body">
+                                        <div class="row g-2">
+                                            <div class="col-md-6">
+                                                <div class="form-group mb-2">
+                                                    <label class="form-label form-label-sm">ID</label>
+                                                    <div class="form-control form-control-sm bg-light">${
+                                                      data.id
+                                                    }</div>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="form-group mb-2">
+                                                    <label class="form-label form-label-sm">Código</label>
+                                                    <div class="form-control form-control-sm bg-light">${
+                                                      data.codigo
+                                                    }</div>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-12">
+                                                <div class="form-group mb-2">
+                                                    <label class="form-label form-label-sm">Nombre</label>
+                                                    <div class="form-control form-control-sm bg-light">${
+                                                      data.nombre
+                                                    }</div>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-12">
+                                                <div class="form-group mb-2">
+                                                    <label class="form-label form-label-sm">Fecha de Creación</label>
+                                                    <div class="form-control form-control-sm bg-light">${formatearFecha(
+                                                      data.creado_en
+                                                    )}</div>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
-                            </div>
-                        </div>
-                    `;
+                            `;
 
           let botonEditar = "";
-          if (tienePermiso("controles.planta.turnos.editar")) {
+          // Ocultar el botón de editar en el panel si el ID está en la lista de no editables
+          if (
+            tienePermiso("controles.planta.turnos.editar") &&
+            !IDS_NO_EDITABLES.includes(parseInt(data.id))
+          ) {
             botonEditar = `
-                            <div class="d-grid gap-2 mt-3">
-                                <button type="button" id="btn-editar-panel" class="btn btn-warning" data-id="${data.id}">
-                                    <i class="bi bi-pencil me-2"></i>Editar Turno
-                                </button>
-                            </div>
-                        `;
+                                <div class="d-grid gap-2 mt-3">
+                                    <button type="button" id="btn-editar-panel" class="btn btn-warning" data-id="${data.id}">
+                                        <i class="bi bi-pencil me-2"></i>Editar Turno
+                                    </button>
+                                </div>
+                            `;
           }
 
           $("#turno-detalle .detail-content").html(`
-                        ${infoBasica}
-                        ${botonEditar}
-                    `);
+                                ${infoBasica}
+                                ${botonEditar}
+                            `);
 
-          $("#btn-editar-panel").on("click", function () {
-            const id = $(this).data("id");
-            abrirModalEditar(id);
-          });
+          // Solo adjuntar el evento si el botón existe
+          if (botonEditar !== "") {
+            $("#btn-editar-panel").on("click", function () {
+              const id = $(this).data("id");
+              abrirModalEditar(id);
+            });
+          }
         } else {
           $("#turno-detalle .detail-content").html(`
-                        <div class="detail-empty">
-                            <div class="detail-empty-icon">
-                                <i class="bi bi-exclamation-triangle"></i>
-                            </div>
-                            <div class="detail-empty-text">
-                                Error al cargar los detalles del turno
-                            </div>
-                        </div>
-                    `);
+                                <div class="detail-empty">
+                                    <div class="detail-empty-icon">
+                                        <i class="bi bi-exclamation-triangle"></i>
+                                    </div>
+                                    <div class="detail-empty-text">
+                                        Error al cargar los detalles del turno
+                                    </div>
+                                </div>
+                            `);
         }
       },
       error: (xhr, status, error) => {
         $("#turno-detalle .detail-content").html(`
-                    <div class="detail-empty">
-                        <div class="detail-empty-icon">
-                            <i class="bi bi-exclamation-triangle"></i>
-                        </div>
-                        <div class="detail-empty-text">
-                            Error de conexión al servidor
-                        </div>
-                    </div>
-                `);
+                            <div class="detail-empty">
+                                <div class="detail-empty-icon">
+                                    <i class="bi bi-exclamation-triangle"></i>
+                                </div>
+                                <div class="detail-empty-text">
+                                    Error de conexión al servidor
+                                </div>
+                            </div>
+                        `);
         console.error("Error al obtener detalles del turno:", error);
       },
     });
@@ -373,6 +387,16 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Función para abrir modal de editar turno
   function abrirModalEditar(id) {
+    // Si el ID está en la lista de no editables, no abrir el modal
+    if (IDS_NO_EDITABLES.includes(parseInt(id))) {
+      if (window.showErrorToast) {
+        window.showErrorToast(
+          "Este turno no puede ser editado. Contacte a un administrador."
+        );
+      }
+      return;
+    }
+
     showLoadingOverlay();
 
     $.ajax({
@@ -423,6 +447,17 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const formData = new FormData();
     const id = $("#turno-id").val();
+
+    // Bloquear el guardado si el ID está en la lista de no editables
+    if (id && IDS_NO_EDITABLES.includes(parseInt(id))) {
+      hideLoadingOverlay();
+      if (window.showErrorToast) {
+        window.showErrorToast(
+          "No se puede editar este turno. Contacte a un administrador."
+        );
+      }
+      return;
+    }
 
     if (id) {
       formData.append("id", id);
