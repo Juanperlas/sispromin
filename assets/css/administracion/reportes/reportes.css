@@ -1,0 +1,514 @@
+/**
+ * Estilos para el módulo de Reportes y Auditoría General
+ * SISPROMIN
+ */
+
+/* Importar colores globales */
+@import url("../../colors.css");
+
+/* Contenedor principal */
+#main-content {
+  padding: 0.5rem;
+}
+
+/* Cabecera */
+.page-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-bottom: 0;
+  color: var(--color-primary);
+}
+
+/* Filtros */
+.filtros-container {
+  background-color: #fff;
+  border-radius: 0.5rem;
+  box-shadow: var(--shadow-md);
+  margin-bottom: 1rem;
+  overflow: hidden;
+}
+
+.filtros-header {
+  font-size: 1rem;
+  font-weight: 600;
+  padding: 0.75rem 1rem;
+  color: #fff;
+  background: linear-gradient(
+    135deg,
+    var(--color-primary),
+    var(--color-primary-dark)
+  );
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+  display: flex;
+  align-items: center;
+}
+
+.filtros-content {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: flex-end;
+  padding: 1rem;
+}
+
+.filtro-grupo {
+  flex: 1;
+  min-width: 150px;
+}
+
+.filtro-label {
+  display: block;
+  font-size: 0.875rem;
+  margin-bottom: 0.5rem;
+  color: #374151;
+  font-weight: 500;
+}
+
+.filtro-select {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  border: 2px solid #e5e7eb;
+  border-radius: 0.375rem;
+  background-color: #fff;
+  transition: all 0.2s ease-in-out;
+}
+
+.filtro-select:focus {
+  border-color: var(--color-primary);
+  outline: 0;
+  box-shadow: 0 0 0 3px rgba(21, 113, 176, 0.1);
+}
+
+.filtros-actions {
+  display: flex;
+  gap: 0.75rem;
+  margin-left: auto;
+}
+
+.btn-aplicar {
+  background: linear-gradient(
+    135deg,
+    var(--color-primary),
+    var(--color-primary-dark)
+  );
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  border-radius: 0.375rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.btn-aplicar:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(21, 113, 176, 0.3);
+}
+
+.btn-limpiar {
+  background-color: transparent;
+  color: var(--color-primary);
+  border: 2px solid var(--color-primary);
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  border-radius: 0.375rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.btn-limpiar:hover {
+  background-color: var(--color-primary);
+  color: white;
+  transform: translateY(-1px);
+}
+
+/* Tabla de reportes */
+.table-container {
+  background-color: #fff;
+  border-radius: 0.5rem;
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+}
+
+#reportes-table {
+  width: 100%;
+  margin-bottom: 0;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 0.875rem;
+}
+
+#reportes-table th {
+  background: linear-gradient(
+    135deg,
+    var(--color-primary),
+    var(--color-primary-dark)
+  );
+  color: white;
+  font-weight: 600;
+  text-align: center;
+  vertical-align: middle;
+  padding: 0.75rem 0.5rem;
+  border: none;
+  font-size: 0.8125rem;
+}
+
+#reportes-table td {
+  padding: 0.75rem 0.5rem;
+  vertical-align: middle;
+  border-bottom: 1px solid #e5e7eb;
+  background-color: #fff;
+}
+
+#reportes-table tbody tr:hover td {
+  background-color: #f8fafc;
+  transform: scale(1.01);
+  transition: all 0.2s ease;
+}
+
+/* Estilos para badges de efectividad */
+.badge {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.375rem;
+  display: inline-block;
+  min-width: 60px;
+}
+
+.bg-success {
+  background: linear-gradient(135deg, #10b981, #059669) !important;
+  color: white !important;
+}
+
+.bg-warning {
+  background: linear-gradient(135deg, #f59e0b, #d97706) !important;
+  color: white !important;
+}
+
+.bg-danger {
+  background: linear-gradient(135deg, #ef4444, #dc2626) !important;
+  color: white !important;
+}
+
+/* DataTables personalizado */
+.dataTables_wrapper {
+  padding: 1rem;
+}
+
+.dataTables_filter {
+  margin-bottom: 1rem;
+}
+
+.dataTables_filter input {
+  padding: 0.5rem;
+  border: 2px solid #e5e7eb;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  width: 300px;
+}
+
+.dataTables_filter input:focus {
+  border-color: var(--color-primary);
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(21, 113, 176, 0.1);
+}
+
+.dataTables_length select {
+  padding: 0.5rem;
+  border: 2px solid #e5e7eb;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+}
+
+.dataTables_info {
+  font-size: 0.875rem;
+  color: #6b7280;
+  padding: 1rem 0;
+}
+
+.dataTables_paginate {
+  padding: 1rem 0;
+}
+
+.dataTables_paginate .paginate_button {
+  padding: 0.5rem 0.75rem;
+  margin: 0 0.25rem;
+  border: 2px solid #e5e7eb;
+  border-radius: 0.375rem;
+  cursor: pointer;
+  background-color: #fff;
+  color: var(--color-primary);
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.dataTables_paginate .paginate_button:hover {
+  background-color: var(--color-primary);
+  color: white;
+  border-color: var(--color-primary);
+  transform: translateY(-1px);
+}
+
+.dataTables_paginate .paginate_button.current {
+  background: linear-gradient(
+    135deg,
+    var(--color-primary),
+    var(--color-primary-dark)
+  );
+  color: white;
+  border-color: var(--color-primary);
+}
+
+/* Botones de exportación */
+.dt-buttons {
+  margin-bottom: 1rem;
+  display: flex;
+  gap: 0.5rem;
+}
+
+.dt-buttons .btn {
+  padding: 0.5rem 1rem;
+  border-radius: 0.375rem;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: white;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.dt-buttons .btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.dt-buttons .btn-success {
+  background: linear-gradient(135deg, #10b981, #059669);
+}
+
+.dt-buttons .btn-danger {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+}
+
+/* Modal de detalles */
+.modal-xl {
+  max-width: 95%;
+}
+
+.modal-header {
+  background: linear-gradient(
+    135deg,
+    var(--color-primary),
+    var(--color-primary-dark)
+  );
+  color: white;
+  padding: 1rem 1.5rem;
+  border-bottom: none;
+}
+
+.modal-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.modal-body {
+  padding: 1.5rem;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.modal-footer {
+  padding: 1rem 1.5rem;
+  border-top: 1px solid #e5e7eb;
+  background-color: #f9fafb;
+}
+
+/* Cards en el modal */
+.card {
+  border: none;
+  box-shadow: var(--shadow-md);
+  border-radius: 0.5rem;
+  overflow: hidden;
+}
+
+.card-header {
+  font-weight: 600;
+  border-bottom: none;
+  padding: 1rem 1.5rem;
+}
+
+.card-body {
+  padding: 1.5rem;
+}
+
+/* Tablas en el modal */
+.table-responsive {
+  border-radius: 0.375rem;
+  overflow: hidden;
+}
+
+.table-sm th,
+.table-sm td {
+  padding: 0.5rem;
+  font-size: 0.8125rem;
+}
+
+.table-dark th {
+  background-color: #374151 !important;
+  color: white !important;
+  font-weight: 600;
+}
+
+.table-striped tbody tr:nth-of-type(odd) {
+  background-color: #f8fafc;
+}
+
+/* Indicadores de laboratorio vs inferido */
+.text-success {
+  color: #10b981 !important;
+  font-weight: 600;
+}
+
+.text-warning {
+  color: #f59e0b !important;
+  font-weight: 600;
+}
+
+/* Botón de ver detalles */
+.btn-ver-detalle {
+  background: linear-gradient(
+    135deg,
+    var(--color-primary),
+    var(--color-primary-dark)
+  );
+  color: white;
+  border: none;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.375rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-weight: 500;
+}
+
+.btn-ver-detalle:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(21, 113, 176, 0.3);
+}
+
+/* Animaciones */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.modal.fade .modal-dialog {
+  animation: fadeIn 0.3s ease-out;
+}
+
+/* Responsive */
+@media (max-width: 991.98px) {
+  .filtros-content {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .filtro-grupo {
+    width: 100%;
+  }
+
+  .filtros-actions {
+    margin-left: 0;
+    justify-content: center;
+  }
+
+  .modal-xl {
+    max-width: 98%;
+  }
+
+  .card-body {
+    padding: 1rem;
+  }
+}
+
+@media (max-width: 767.98px) {
+  #reportes-table th,
+  #reportes-table td {
+    font-size: 0.75rem;
+    padding: 0.5rem 0.25rem;
+  }
+
+  .badge {
+    font-size: 0.6875rem;
+    padding: 0.25rem 0.5rem;
+  }
+
+  .dt-buttons {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .dataTables_filter input {
+    width: 100%;
+  }
+}
+
+/* Estilos para valores numéricos */
+.fw-bold {
+  font-weight: 700 !important;
+}
+
+.text-primary {
+  color: var(--color-primary) !important;
+}
+
+.text-info {
+  color: #0ea5e9 !important;
+}
+
+.text-secondary {
+  color: #64748b !important;
+}
+
+/* Efectos de hover mejorados */
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-xl);
+  transition: all 0.3s ease;
+}
+
+/* Scrollbar personalizado */
+.modal-body::-webkit-scrollbar {
+  width: 8px;
+}
+
+.modal-body::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 4px;
+}
+
+.modal-body::-webkit-scrollbar-thumb {
+  background: var(--color-primary);
+  border-radius: 4px;
+}
+
+.modal-body::-webkit-scrollbar-thumb:hover {
+  background: var(--color-primary-dark);
+}

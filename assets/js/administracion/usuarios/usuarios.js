@@ -1,6 +1,6 @@
 /**
  * Módulo de Gestión de Usuarios
- * SIGESMANCOR
+ * SISPROMIN
  */
 
 // Variables globales

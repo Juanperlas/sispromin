@@ -21,9 +21,9 @@ if (!estaAutenticado()) {
 }
 
 // Verificar permiso
-if (!tienePermiso("registros.produccion_mina.eliminar")) {
+if (!tienePermiso("registros.flotacion.eliminar")) {
     http_response_code(403);
-    echo json_encode(["success" => false, "message" => "No tiene permisos para eliminar registros de producción mina"]);
+    echo json_encode(["success" => false, "message" => "No tiene permisos para eliminar registros de flotación"]);
     exit;
 }
 
@@ -34,34 +34,39 @@ if ($_SERVER["REQUEST_METHOD"] !== "POST") {
     exit;
 }
 
-// Obtener ID del registro
-$id = isset($_POST["id"]) ? intval($_POST["id"]) : 0;
-
-if ($id <= 0) {
+// Verificar que se proporcionó un ID
+if (!isset($_POST["id"]) || empty($_POST["id"])) {
     http_response_code(400);
-    echo json_encode(["success" => false, "message" => "ID de registro no válido"]);
+    echo json_encode(["success" => false, "message" => "ID de registro no proporcionado"]);
     exit;
 }
+
+$id = intval($_POST["id"]);
 
 try {
     // Conexión a la base de datos
     $conexion = new Conexion();
     $conn = $conexion->getConexion();
 
+    // Verificar que el registro existe
+    $registro = $conexion->selectOne("SELECT id, codigo_registro FROM flotacion WHERE id = ?", [$id]);
+    if (!$registro) {
+        http_response_code(404);
+        echo json_encode(["success" => false, "message" => "El registro no existe"]);
+        exit;
+    }
+
     // Iniciar transacción
     $conn->beginTransaction();
 
-    // Verificar que el registro existe
-    $registroExistente = $conexion->selectOne("SELECT id, codigo_registro FROM produccion_mina WHERE id = ?", [$id]);
-    if (!$registroExistente) {
-        throw new Exception("El registro no existe");
-    }
+    // Eliminar productos químicos asociados
+    $conexion->delete("flotacion_productos", "flotacion_id = ?", [$id]);
 
-    // Eliminar registros de laboratorio relacionados
-    $conexion->delete("laboratorio", "tipo_registro = 'produccion_mina' AND registro_id = ?", [$id]);
+    // Eliminar registro de laboratorio asociado
+    $conexion->delete("laboratorio", "registro_id = ? AND tipo_registro = 'flotacion'", [$id]);
 
     // Eliminar el registro principal
-    $resultado = $conexion->delete("produccion_mina", "id = ?", [$id]);
+    $resultado = $conexion->delete("flotacion", "id = ?", [$id]);
 
     if (!$resultado) {
         throw new Exception("Error al eliminar el registro");
@@ -70,15 +75,19 @@ try {
     // Confirmar transacción
     $conn->commit();
 
-    // Preparar respuesta
+    // Preparar respuesta exitosa
     $response = [
         "success" => true,
-        "message" => "Registro eliminado correctamente"
+        "message" => "Registro eliminado correctamente",
+        "data" => [
+            "id" => $id,
+            "codigo_registro" => $registro["codigo_registro"]
+        ]
     ];
 } catch (Exception $e) {
     // Revertir transacción en caso de error
-    if (isset($conn) && $conn->inTransaction()) {
-        $conn->rollBack();
+    if ($conn->inTransaction()) {
+        $conn->rollback();
     }
 
     // Preparar respuesta de error
@@ -88,10 +97,9 @@ try {
     ];
 
     // Registrar error en log
-    error_log("Error en eliminar.php (produccion_mina): " . $e->getMessage());
+    error_log("Error en eliminar.php (flotacion): " . $e->getMessage());
 }
 
 // Devolver respuesta en formato JSON
 header("Content-Type: application/json");
 echo json_encode($response);
-exit;

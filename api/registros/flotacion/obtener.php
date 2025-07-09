@@ -21,9 +21,9 @@ if (!estaAutenticado()) {
 }
 
 // Verificar permiso
-if (!tienePermiso("registros.produccion_mina.ver")) {
+if (!tienePermiso("registros.flotacion.ver")) {
     http_response_code(403);
-    echo json_encode(["success" => false, "message" => "No tiene permisos para ver registros de producción mina"]);
+    echo json_encode(["success" => false, "message" => "No tiene permisos para ver registros de flotación"]);
     exit;
 }
 
@@ -41,22 +41,35 @@ try {
     // Conexión a la base de datos
     $conexion = new Conexion();
 
-    // Obtener datos del registro con JOINs
-    $sql = "SELECT pm.id, pm.codigo_registro, pm.fecha, pm.turno_id, pm.frente_id,
-                   pm.material_extraido, pm.desmonte, pm.ley_inferido_geologo, pm.creado_en,
-                   tm.nombre as turno_nombre, fm.nombre as frente_nombre,
-                   l.codigo_muestra, l.ley_laboratorio,
+    // Obtener datos del registro con JOINs correctos
+    $sql = "SELECT f.id, f.codigo_registro, f.fecha, f.turno_id,
+                   f.carga_mineral_promedio, f.carga_mineral_extra, 
+                   f.codigo_muestra_mat_extra, f.ley_inferido_metalurgista_extra,
+                   f.creado_en,
+                   tf.nombre as turno_nombre,
+                   l.codigo_muestra,
+                   l.ley_laboratorio,
+                   -- Cálculo del resultado esperado
+                   COALESCE(
+                       (f.carga_mineral_promedio * COALESCE(l.ley_laboratorio, 0)) + 
+                       (COALESCE(f.carga_mineral_extra, 0) * COALESCE(f.ley_inferido_metalurgista_extra, 0)),
+                       0
+                   ) as resultado_esperado,
+                   -- Información sobre el estado del cálculo
                    CASE 
-                       WHEN l.ley_laboratorio IS NOT NULL THEN pm.material_extraido * l.ley_laboratorio
-                       WHEN pm.ley_inferido_geologo IS NOT NULL THEN pm.material_extraido * pm.ley_inferido_geologo
-                       ELSE 0
-                   END as valor_calculado
-            FROM produccion_mina pm 
-            INNER JOIN turnos_mina tm ON pm.turno_id = tm.id 
-            INNER JOIN frentes_mina fm ON pm.frente_id = fm.id 
-            LEFT JOIN laboratorio l ON l.tipo_registro = 'produccion_mina' AND l.registro_id = pm.id
-            WHERE pm.id = ?";
-    
+                       WHEN l.ley_laboratorio IS NULL THEN 'sin_laboratorio'
+                       WHEN f.carga_mineral_extra IS NOT NULL AND f.carga_mineral_extra > 0 AND f.ley_inferido_metalurgista_extra IS NULL THEN 'falta_ley_extra'
+                       WHEN f.carga_mineral_extra IS NOT NULL AND f.carga_mineral_extra > 0 AND f.ley_inferido_metalurgista_extra IS NOT NULL AND l.ley_laboratorio IS NOT NULL THEN 'completo'
+                       WHEN f.carga_mineral_extra IS NULL AND l.ley_laboratorio IS NOT NULL THEN 'completo_sin_extra'
+                       ELSE 'parcial'
+                   END as estado_calculo,
+                   -- Calificación aleatoria (como solicitaste)
+                   (RAND() * 30 + 70) as calificacion
+            FROM flotacion f 
+            INNER JOIN turnos_flotacion tf ON f.turno_id = tf.id 
+            LEFT JOIN laboratorio l ON f.id = l.registro_id AND l.tipo_registro = 'flotacion'
+            WHERE f.id = ?";
+
     $registro = $conexion->selectOne($sql, [$id]);
 
     if (!$registro) {
@@ -67,6 +80,16 @@ try {
 
     // Formatear fecha para mostrar
     $registro['fecha_formateada'] = date("d/m/Y", strtotime($registro["fecha"]));
+
+    // Obtener productos utilizados
+    $sqlProductos = "SELECT fp.id, fp.cantidad, p.nombre as producto_nombre, p.codigo
+                     FROM flotacion_productos fp
+                     INNER JOIN productos_flotacion p ON fp.producto_id = p.id
+                     WHERE fp.flotacion_id = ?
+                     ORDER BY p.nombre";
+
+    $productos = $conexion->select($sqlProductos, [$id]);
+    $registro['productos'] = $productos;
 
     // Preparar respuesta
     $response = [
@@ -81,7 +104,7 @@ try {
     ];
 
     // Registrar error en log
-    error_log("Error en obtener.php (produccion_mina): " . $e->getMessage());
+    error_log("Error en obtener.php (flotacion): " . $e->getMessage());
 }
 
 // Devolver respuesta en formato JSON

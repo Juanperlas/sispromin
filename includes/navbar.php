@@ -24,7 +24,7 @@ $is_mina = strpos($pagina_ruta, 'modulos/registros/mina') !== false;
 $is_planta = strpos($pagina_ruta, 'modulos/registros/planta') !== false;
 $is_amalgamacion = strpos($pagina_ruta, 'modulos/registros/amalgamacion') !== false;
 $is_flotacion = strpos($pagina_ruta, 'modulos/registros/flotacion') !== false;
-$is_historial_general = strpos($pagina_ruta, 'modulos/registros/historial_general') !== false;
+$is_historial = strpos($pagina_ruta, 'modulos/registros/historial') !== false;
 $is_estadistica = strpos($pagina_ruta, 'modulos/registros/estadistica') !== false;
 
 // Verificar si estamos en un módulo específico - CONTROLES MINA
@@ -173,8 +173,8 @@ $mostrar_administracion = $es_admin && ($permisos['admin_usuarios'] || $permisos
                     <?php endif; ?>
 
                     <?php if ($permisos['registros_historial_general']): ?>
-                        <li class="sidebar-menu-item <?php echo $is_historial_general ? 'active' : ''; ?>">
-                            <a href="<?php echo getPageUrl('modulos/registros/historial_general/index.php'); ?>" class="sidebar-menu-link">
+                        <li class="sidebar-menu-item <?php echo $is_historial ? 'active' : ''; ?>">
+                            <a href="<?php echo getPageUrl('modulos/registros/historial/index.php'); ?>" class="sidebar-menu-link">
                                 <i class="bi bi-clock-history"></i>
                                 <span>Historial General</span>
                             </a>
@@ -315,7 +315,7 @@ $mostrar_administracion = $es_admin && ($permisos['admin_usuarios'] || $permisos
                     <?php if ($permisos['controles_productos_flotacion']): ?>
                         <li class="sidebar-menu-item <?php echo $is_productos_flotacion ? 'active' : ''; ?>">
                             <a href="<?php echo getPageUrl('modulos/controles/flotacion/productos/index.php'); ?>" class="sidebar-menu-link">
-                                <i class="bi bi-flask"></i>
+                                <i class="bi bi-radioactive"></i>
                                 <span>Productos Químicos</span>
                             </a>
                         </li>

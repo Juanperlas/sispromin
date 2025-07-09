@@ -21,9 +21,9 @@ if (!estaAutenticado()) {
 }
 
 // Verificar permiso
-if (!tienePermiso("registros.produccion_mina.ver")) {
+if (!tienePermiso("registros.historial_general.ver")) {
     http_response_code(403);
-    echo json_encode(["success" => false, "message" => "No tiene permisos para ver registros de producción mina"]);
+    echo json_encode(["success" => false, "message" => "No tiene permisos para ver el historial general"]);
     exit;
 }
 
@@ -39,16 +39,12 @@ $orderDir = isset($_POST["order"][0]["dir"]) ? $_POST["order"][0]["dir"] : "desc
 
 // Mapeo de columnas para ordenamiento
 $columns = [
-    "pm.id",
-    "pm.codigo_registro",
-    "pm.fecha",
-    "tm.nombre",
-    "fm.nombre",
-    "pm.material_extraido",
-    "pm.desmonte",
-    "pm.ley_inferido_geologo",
-    "l.ley_laboratorio",
-    "valor_calculado"
+    "id",
+    "tipo_registro",
+    "codigo_registro",
+    "fecha",
+    "turno_nombre",
+    "creado_en"
 ];
 
 // Filtros adicionales
@@ -59,7 +55,7 @@ $params = [];
 if (isset($_POST["fecha_inicio"]) && $_POST["fecha_inicio"] !== "") {
     $fechaInicio = DateTime::createFromFormat('d/m/Y', $_POST["fecha_inicio"]);
     if ($fechaInicio) {
-        $filtros[] = "pm.fecha >= ?";
+        $filtros[] = "fecha >= ?";
         $params[] = $fechaInicio->format('Y-m-d');
     }
 }
@@ -68,34 +64,33 @@ if (isset($_POST["fecha_inicio"]) && $_POST["fecha_inicio"] !== "") {
 if (isset($_POST["fecha_fin"]) && $_POST["fecha_fin"] !== "") {
     $fechaFin = DateTime::createFromFormat('d/m/Y', $_POST["fecha_fin"]);
     if ($fechaFin) {
-        $filtros[] = "pm.fecha <= ?";
+        $filtros[] = "fecha <= ?";
         $params[] = $fechaFin->format('Y-m-d');
     }
 }
 
-// Filtro por turno
-if (isset($_POST["turno_id"]) && $_POST["turno_id"] !== "") {
-    $filtros[] = "pm.turno_id = ?";
-    $params[] = $_POST["turno_id"];
-}
-
-// Filtro por frente
-if (isset($_POST["frente_id"]) && $_POST["frente_id"] !== "") {
-    $filtros[] = "pm.frente_id = ?";
-    $params[] = $_POST["frente_id"];
+// Filtro por tipo de registro
+if (isset($_POST["tipo_registro"]) && $_POST["tipo_registro"] !== "") {
+    $filtros[] = "tipo_registro = ?";
+    $params[] = $_POST["tipo_registro"];
 }
 
 // Filtro por código
 if (isset($_POST["codigo"]) && $_POST["codigo"] !== "") {
-    $filtros[] = "pm.codigo_registro LIKE ?";
+    $filtros[] = "codigo_registro LIKE ?";
     $params[] = "%" . $_POST["codigo"] . "%";
 }
 
 // Filtro de búsqueda global
 if ($search !== "") {
-    $filtros[] = "(pm.codigo_registro LIKE ? OR tm.nombre LIKE ? OR fm.nombre LIKE ?)";
+    $filtros[] = "(codigo_registro LIKE ? OR turno_nombre LIKE ?)";
     $searchParam = "%$search%";
-    $params = array_merge($params, [$searchParam, $searchParam, $searchParam]);
+    $params = array_merge($params, [$searchParam, $searchParam]);
+}
+
+// Si no hay filtros de fecha, aplicar filtro por defecto (último día)
+if (!isset($_POST["fecha_inicio"]) && !isset($_POST["fecha_fin"])) {
+    $filtros[] = "fecha = CURDATE()";
 }
 
 // Construir la condición WHERE
@@ -108,39 +103,70 @@ try {
     // Conexión a la base de datos
     $conexion = new Conexion();
 
-    // Consulta base con JOINs
-    $sqlBase = "FROM produccion_mina pm 
-                INNER JOIN turnos_mina tm ON pm.turno_id = tm.id 
-                INNER JOIN frentes_mina fm ON pm.frente_id = fm.id 
-                LEFT JOIN laboratorio l ON l.tipo_registro = 'produccion_mina' AND l.registro_id = pm.id";
+    // Consulta UNION para obtener todos los registros
+    $sqlBase = "
+        (SELECT 
+            id, 
+            'mina' as tipo_registro,
+            codigo_registro, 
+            fecha, 
+            turno_id,
+            creado_en,
+            (SELECT nombre FROM turnos_mina WHERE id = produccion_mina.turno_id) as turno_nombre
+         FROM produccion_mina)
+        UNION ALL
+        (SELECT 
+            id, 
+            'planta' as tipo_registro,
+            codigo_registro, 
+            fecha, 
+            turno_id,
+            creado_en,
+            (SELECT nombre FROM turnos_planta WHERE id = planta.turno_id) as turno_nombre
+         FROM planta)
+        UNION ALL
+        (SELECT 
+            id, 
+            'amalgamacion' as tipo_registro,
+            codigo_registro, 
+            fecha, 
+            turno_id,
+            creado_en,
+            (SELECT nombre FROM turnos_amalgamacion WHERE id = amalgamacion.turno_id) as turno_nombre
+         FROM amalgamacion)
+        UNION ALL
+        (SELECT 
+            id, 
+            'flotacion' as tipo_registro,
+            codigo_registro, 
+            fecha, 
+            turno_id,
+            creado_en,
+            (SELECT nombre FROM turnos_flotacion WHERE id = flotacion.turno_id) as turno_nombre
+         FROM flotacion)
+    ";
 
-    // Consulta para contar registros totales (sin filtros)
-    $sqlTotal = "SELECT COUNT(*) as total $sqlBase";
-    $resultadoTotal = $conexion->selectOne($sqlTotal);
+    // Consulta para contar registros totales (sin filtros, pero con filtro por defecto de fecha)
+    $sqlTotalBase = "SELECT COUNT(*) as total FROM ($sqlBase) as todos_registros";
+    if (empty($filtros)) {
+        $sqlTotalBase .= " WHERE fecha = CURDATE()";
+    }
+    $resultadoTotal = $conexion->selectOne($sqlTotalBase);
     $totalRecords = $resultadoTotal["total"];
 
     // Consulta para contar registros filtrados
-    $sqlFiltered = "SELECT COUNT(*) as total $sqlBase $where";
+    $sqlFiltered = "SELECT COUNT(*) as total FROM ($sqlBase) as todos_registros $where";
     $resultadoFiltered = $conexion->selectOne($sqlFiltered, $params);
     $totalFiltered = $resultadoFiltered["total"];
 
     // Consulta principal para obtener los datos
-    $sql = "SELECT pm.id, pm.codigo_registro, pm.fecha, pm.turno_id, pm.frente_id,
-                   pm.material_extraido, pm.desmonte, pm.ley_inferido_geologo, pm.creado_en,
-                   tm.nombre as turno_nombre, fm.nombre as frente_nombre,
-                   l.codigo_muestra, l.ley_laboratorio,
-                   CASE 
-                       WHEN l.ley_laboratorio IS NOT NULL THEN pm.material_extraido * l.ley_laboratorio
-                       WHEN pm.ley_inferido_geologo IS NOT NULL THEN pm.material_extraido * pm.ley_inferido_geologo
-                       ELSE 0
-                   END as valor_calculado
-            $sqlBase $where";
+    $sql = "SELECT * FROM ($sqlBase) as todos_registros $where";
 
     // Aplicar ordenamiento
     if (isset($columns[$orderColumn])) {
         $sql .= " ORDER BY {$columns[$orderColumn]} $orderDir";
     } else {
-        $sql .= " ORDER BY pm.id DESC"; // Por defecto ordenar por ID descendente
+        $sql .= " ORDER BY id DESC"; // Por defecto ordenar por ID descendente
     }
 
     // Aplicar paginación
@@ -155,23 +181,20 @@ try {
         // Formatear fecha
         $fechaFormateada = date("d/m/Y", strtotime($row["fecha"]));
 
+        // Formatear fecha de creación
+        $creadoFormateado = date("d/m/Y H:i", strtotime($row["creado_en"]));
+
         // Agregar datos a la respuesta
         $data[] = [
             "id" => $row["id"],
+            "tipo_registro" => $row["tipo_registro"],
             "codigo_registro" => $row["codigo_registro"],
             "fecha" => $row["fecha"],
             "fecha_formateada" => $fechaFormateada,
             "turno_id" => $row["turno_id"],
             "turno_nombre" => $row["turno_nombre"],
-            "frente_id" => $row["frente_id"],
-            "frente_nombre" => $row["frente_nombre"],
-            "material_extraido" => $row["material_extraido"],
-            "desmonte" => $row["desmonte"],
-            "ley_inferido_geologo" => $row["ley_inferido_geologo"],
-            "codigo_muestra" => $row["codigo_muestra"],
-            "ley_laboratorio" => $row["ley_laboratorio"],
-            "valor_calculado" => $row["valor_calculado"],
-            "creado_en" => $row["creado_en"]
+            "creado_en" => $row["creado_en"],
+            "creado_formateado" => $creadoFormateado
         ];
     }
 
@@ -193,7 +216,7 @@ try {
     ];
 
     // Registrar error en log
-    error_log("Error en listar.php (produccion_mina): " . $e->getMessage());
+    error_log("Error en listar.php (historial): " . $e->getMessage());
 }
 
 // Devolver respuesta en formato JSON

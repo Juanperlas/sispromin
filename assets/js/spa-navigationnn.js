@@ -188,7 +188,7 @@ function loadContent(url) {
           /<h1[^>]*class="page-title"[^>]*>(.*?)<\/h1>/
         );
         if (titleMatch && titleMatch[1]) {
-          document.title = titleMatch[1] + " | SIGESMANCOR";
+          document.title = titleMatch[1] + " | SISPROMIN";
         }
 
         updateActiveLink(url);

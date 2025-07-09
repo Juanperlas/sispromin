@@ -1,6 +1,6 @@
 /**
  * Módulo de Gestión de Roles y Permisos
- * SIGESMANCOR
+ * SISPROMIN
  */
 
 // Variables globales

@@ -6,6 +6,10 @@ date_default_timezone_set('America/Lima');
 require_once '../db/funciones.php';
 require_once '../db/conexion.php';
 
+// Configurar headers
+header('Content-Type: application/json');
+header('Cache-Control: no-cache, must-revalidate');
+
 // Verificar autenticación
 if (!estaAutenticado()) {
     http_response_code(401);
@@ -20,33 +24,25 @@ if (!tienePermiso('dashboard.ver')) {
     exit;
 }
 
-// Configurar headers
-header('Content-Type: application/json');
-
 try {
     $conexion = new Conexion();
-    
-    // Verificar si es una solicitud de exportación
-    if (isset($_GET['export'])) {
-        handleExport($_GET['export'], $_GET['tipo'] ?? null);
-        exit;
-    }
-    
+
     // Obtener datos del dashboard
     $dashboardData = [
-        'estadisticas' => obtenerEstadisticasPrincipales($conexion),
-        'graficas' => obtenerDatosGraficas($conexion),
-        'tablas' => obtenerDatosTablas($conexion),
-        'actividad' => obtenerActividadReciente($conexion),
-        'alertas' => obtenerAlertas($conexion)
+        'metricas_principales' => obtenerMetricasPrincipales($conexion),
+        'produccion_hoy' => obtenerProduccionHoy($conexion),
+        'tendencia_semanal' => obtenerTendenciaSemanal($conexion),
+        'distribucion_procesos' => obtenerDistribucionProcesos($conexion),
+        'alertas' => obtenerAlertas($conexion),
+        'actividad_reciente' => obtenerActividadReciente($conexion),
+        'kpis_operacionales' => obtenerKPIsOperacionales($conexion)
     ];
-    
+
     echo json_encode([
         'success' => true,
         'data' => $dashboardData,
         'timestamp' => date('Y-m-d H:i:s')
     ]);
-    
 } catch (Exception $e) {
     error_log("Error en dashboard_data.php: " . $e->getMessage());
     echo json_encode([
@@ -56,410 +52,550 @@ try {
 }
 
 /**
- * Obtiene las estadísticas principales del dashboard
+ * Obtiene las métricas principales del dashboard
  */
-function obtenerEstadisticasPrincipales($conexion) {
-    // Total de equipos
-    $totalEquipos = $conexion->selectOne("SELECT COUNT(*) as total FROM equipos");
-    $totalEquipos = $totalEquipos ? $totalEquipos['total'] : 0;
-    
-    // Equipos activos
-    $equiposActivos = $conexion->selectOne("SELECT COUNT(*) as total FROM equipos WHERE estado = 'activo'");
-    $equiposActivos = $equiposActivos ? $equiposActivos['total'] : 0;
-    
-    // Mantenimientos pendientes (suma de todos los tipos)
-    $mantenimientosPendientes = 0;
-    
-    // Preventivos pendientes
-    $preventivos = $conexion->selectOne("SELECT COUNT(*) as total FROM mantenimiento_preventivo WHERE estado = 'pendiente'");
-    $mantenimientosPendientes += $preventivos ? $preventivos['total'] : 0;
-    
-    // Correctivos pendientes
-    $correctivos = $conexion->selectOne("SELECT COUNT(*) as total FROM mantenimiento_correctivo WHERE estado = 'pendiente'");
-    $mantenimientosPendientes += $correctivos ? $correctivos['total'] : 0;
-    
-    // Programados pendientes
-    $programados = $conexion->selectOne("SELECT COUNT(*) as total FROM mantenimiento_programado WHERE estado = 'pendiente'");
-    $mantenimientosPendientes += $programados ? $programados['total'] : 0;
-    
-    // Equipos críticos (averiados + en mantenimiento)
-    $equiposCriticos = $conexion->selectOne("
-        SELECT COUNT(*) as total FROM equipos 
-        WHERE estado IN ('averiado', 'mantenimiento')
-    ");
-    $equiposCriticos = $equiposCriticos ? $equiposCriticos['total'] : 0;
-    
-    // Equipos nuevos este mes
-    $equiposNuevos = $conexion->selectOne("
-        SELECT COUNT(*) as total FROM equipos 
-        WHERE MONTH(creado_en) = MONTH(CURRENT_DATE()) 
-        AND YEAR(creado_en) = YEAR(CURRENT_DATE())
-    ");
-    $equiposNuevos = $equiposNuevos ? $equiposNuevos['total'] : 0;
-    
-    return [
-        'totalEquipos' => (int)$totalEquipos,
-        'equiposActivos' => (int)$equiposActivos,
-        'mantenimientosPendientes' => (int)$mantenimientosPendientes,
-        'equiposCriticos' => (int)$equiposCriticos,
-        'equiposNuevos' => (int)$equiposNuevos
-    ];
-}
+function obtenerMetricasPrincipales($conexion)
+{
+    $hoy = date('Y-m-d');
+    $ayer = date('Y-m-d', strtotime('-1 day'));
+    $hace7dias = date('Y-m-d', strtotime('-7 days'));
+    $hace30dias = date('Y-m-d', strtotime('-30 days'));
 
-/**
- * Obtiene los datos para las gráficas
- */
-function obtenerDatosGraficas($conexion) {
-    return [
-        'estadoEquipos' => obtenerEstadoEquipos($conexion),
-        'mantenimientosMes' => obtenerMantenimientosPorMes($conexion),
-        'ubicaciones' => obtenerDistribucionUbicaciones($conexion)
+    // Producción total hoy
+    $produccionHoy = 0;
+    $tablas = [
+        'produccion_mina' => 'material_extraido',
+        'planta' => 'material_procesado',
+        'amalgamacion' => 'cantidad_carga_concentrados',
+        'flotacion' => 'carga_mineral_promedio'
     ];
-}
 
-/**
- * Obtiene la distribución de equipos por estado
- */
-function obtenerEstadoEquipos($conexion) {
-    $estados = $conexion->select("
-        SELECT estado, COUNT(*) as total 
-        FROM equipos 
-        GROUP BY estado 
-        ORDER BY total DESC
-    ");
-    
-    if (empty($estados)) {
-        // Datos de demostración si no hay equipos
-        return [
-            'labels' => ['Sin datos'],
-            'values' => [1]
-        ];
+    foreach ($tablas as $tabla => $campo) {
+        try {
+            $result = $conexion->selectOne("
+                SELECT COALESCE(SUM({$campo}), 0) as total 
+                FROM {$tabla} 
+                WHERE fecha = ?
+            ", [$hoy]);
+            $produccionHoy += $result ? $result['total'] : 0;
+        } catch (Exception $e) {
+            error_log("Error en tabla {$tabla}: " . $e->getMessage());
+        }
     }
-    
-    $labels = [];
-    $values = [];
-    
-    foreach ($estados as $estado) {
-        $labels[] = ucfirst($estado['estado']);
-        $values[] = (int)$estado['total'];
+
+    // Producción ayer para comparación
+    $produccionAyer = 0;
+    foreach ($tablas as $tabla => $campo) {
+        try {
+            $result = $conexion->selectOne("
+                SELECT COALESCE(SUM({$campo}), 0) as total 
+                FROM {$tabla} 
+                WHERE fecha = ?
+            ", [$ayer]);
+            $produccionAyer += $result ? $result['total'] : 0;
+        } catch (Exception $e) {
+            error_log("Error en tabla {$tabla}: " . $e->getMessage());
+        }
     }
-    
+
+    // Registros totales hoy
+    $registrosHoy = 0;
+    foreach (array_keys($tablas) as $tabla) {
+        try {
+            $result = $conexion->selectOne("
+                SELECT COUNT(*) as total 
+                FROM {$tabla} 
+                WHERE fecha = ?
+            ", [$hoy]);
+            $registrosHoy += $result ? $result['total'] : 0;
+        } catch (Exception $e) {
+            error_log("Error contando en tabla {$tabla}: " . $e->getMessage());
+        }
+    }
+
+    // Ley promedio últimos 7 días
+    $leyPromedio = $conexion->selectOne("
+        SELECT AVG(ley_laboratorio) as promedio 
+        FROM laboratorio 
+        WHERE DATE(creado_en) BETWEEN ? AND ?
+        AND ley_laboratorio IS NOT NULL
+    ", [$hace7dias, $hoy]);
+
+    // Registros incompletos (sin laboratorio)
+    $registrosIncompletos = 0;
+    foreach (array_keys($tablas) as $tabla) {
+        try {
+            $tipoRegistro = $tabla === 'produccion_mina' ? 'produccion_mina' : $tabla;
+            $result = $conexion->selectOne("
+                SELECT COUNT(*) as total 
+                FROM {$tabla} t
+                LEFT JOIN laboratorio l ON t.id = l.registro_id AND l.tipo_registro = ?
+                WHERE t.fecha BETWEEN ? AND ? AND l.id IS NULL
+            ", [$tipoRegistro, $hace7dias, $hoy]);
+            $registrosIncompletos += $result ? $result['total'] : 0;
+        } catch (Exception $e) {
+            error_log("Error verificando registros incompletos en {$tabla}: " . $e->getMessage());
+        }
+    }
+
+    // Turnos activos hoy
+    $turnosActivos = $conexion->selectOne("
+        SELECT COUNT(DISTINCT turno_id) as total FROM (
+            SELECT turno_id FROM produccion_mina WHERE fecha = ?
+            UNION
+            SELECT turno_id FROM planta WHERE fecha = ?
+            UNION  
+            SELECT turno_id FROM amalgamacion WHERE fecha = ?
+            UNION
+            SELECT turno_id FROM flotacion WHERE fecha = ?
+        ) as turnos
+    ", [$hoy, $hoy, $hoy, $hoy]);
+
+    // Calcular variación porcentual
+    $variacionProduccion = $produccionAyer > 0 ?
+        (($produccionHoy - $produccionAyer) / $produccionAyer) * 100 : 0;
+
+    // Eficiencia operacional (simulada basada en metas)
+    $eficienciaOperacional = min(95, max(60, 85 + ($variacionProduccion * 0.5)));
+
     return [
-        'labels' => $labels,
-        'values' => $values
+        'produccion_hoy' => (float)$produccionHoy,
+        'produccion_ayer' => (float)$produccionAyer,
+        'variacion_produccion' => (float)$variacionProduccion,
+        'registros_hoy' => (int)$registrosHoy,
+        'ley_promedio' => $leyPromedio ? (float)$leyPromedio['promedio'] : 0,
+        'registros_incompletos' => (int)$registrosIncompletos,
+        'turnos_activos' => $turnosActivos ? (int)$turnosActivos['total'] : 0,
+        'eficiencia_operacional' => (float)$eficienciaOperacional
     ];
 }
 
 /**
- * Obtiene los mantenimientos por mes
+ * Obtiene la producción detallada de hoy por proceso
  */
-function obtenerMantenimientosPorMes($conexion) {
-    // Obtener los últimos 6 meses
-    $meses = [];
-    $preventivo = [];
-    $correctivo = [];
-    $programado = [];
-    
-    for ($i = 5; $i >= 0; $i--) {
-        $fecha = date('Y-m', strtotime("-$i months"));
-        $mesNombre = date('M Y', strtotime("-$i months"));
-        $meses[] = $mesNombre;
-        
-        // Mantenimientos preventivos
-        $prev = $conexion->selectOne("
-            SELECT COUNT(*) as total 
-            FROM mantenimiento_preventivo 
-            WHERE DATE_FORMAT(fecha_realizado, '%Y-%m') = ? 
-            AND estado = 'completado'
-        ", [$fecha]);
-        $preventivo[] = $prev ? (int)$prev['total'] : 0;
-        
-        // Mantenimientos correctivos
-        $corr = $conexion->selectOne("
-            SELECT COUNT(*) as total 
-            FROM mantenimiento_correctivo 
-            WHERE DATE_FORMAT(fecha_realizado, '%Y-%m') = ? 
-            AND estado = 'completado'
-        ", [$fecha]);
-        $correctivo[] = $corr ? (int)$corr['total'] : 0;
-        
-        // Mantenimientos programados
-        $prog = $conexion->selectOne("
-            SELECT COUNT(*) as total 
-            FROM mantenimiento_programado 
-            WHERE DATE_FORMAT(fecha_realizado, '%Y-%m') = ? 
-            AND estado = 'completado'
-        ", [$fecha]);
-        $programado[] = $prog ? (int)$prog['total'] : 0;
-    }
-    
-    return [
-        'labels' => $meses,
-        'preventivo' => $preventivo,
-        'correctivo' => $correctivo,
-        'programado' => $programado
-    ];
-}
+function obtenerProduccionHoy($conexion)
+{
+    $hoy = date('Y-m-d');
+    $produccion = [];
 
-/**
- * Obtiene la distribución por ubicaciones
- */
-function obtenerDistribucionUbicaciones($conexion) {
-    $ubicaciones = $conexion->select("
-        SELECT ubicacion, COUNT(*) as total 
-        FROM equipos 
-        WHERE ubicacion IS NOT NULL AND ubicacion != ''
-        GROUP BY ubicacion 
-        ORDER BY total DESC 
-        LIMIT 8
-    ");
-    
-    if (empty($ubicaciones)) {
-        // Datos de demostración si no hay ubicaciones
-        return [
-            'labels' => ['Sin ubicaciones'],
-            'values' => [1]
-        ];
-    }
-    
-    $labels = [];
-    $values = [];
-    
-    foreach ($ubicaciones as $ubicacion) {
-        $labels[] = $ubicacion['ubicacion'];
-        $values[] = (int)$ubicacion['total'];
-    }
-    
-    return [
-        'labels' => $labels,
-        'values' => $values
-    ];
-}
-
-/**
- * Obtiene los datos para las tablas
- */
-function obtenerDatosTablas($conexion) {
-    return [
-        'equiposAtencion' => obtenerEquiposAtencion($conexion),
-        'ultimosMantenimientos' => obtenerUltimosMantenimientos($conexion)
-    ];
-}
-
-/**
- * Obtiene equipos que requieren atención
- */
-function obtenerEquiposAtencion($conexion) {
-    $equipos = $conexion->select("
-        SELECT e.id, e.codigo, e.nombre, e.ubicacion, e.estado,
-               e.orometro_actual, e.proximo_orometro, e.notificacion,
-               CASE 
-                   WHEN e.estado = 'averiado' THEN 'Alta'
-                   WHEN e.estado = 'mantenimiento' THEN 'Alta'
-                   WHEN e.proximo_orometro IS NOT NULL AND (e.proximo_orometro - e.orometro_actual) <= (e.notificacion / 2) THEN 'Alta'
-                   WHEN e.proximo_orometro IS NOT NULL AND (e.proximo_orometro - e.orometro_actual) <= e.notificacion THEN 'Media'
-                   ELSE 'Baja'
-               END as prioridad,
-               CASE 
-                   WHEN e.proximo_orometro IS NOT NULL THEN 
-                       CONCAT(FORMAT(e.proximo_orometro, 2), ' ', 
-                              CASE e.tipo_orometro WHEN 'horas' THEN 'hrs' ELSE 'km' END)
-                   ELSE 'No programado'
-               END as proximoMantenimiento,
-               CASE 
-                   WHEN e.proximo_orometro IS NOT NULL AND e.proximo_orometro > e.orometro_actual THEN 
-                       CONCAT('Faltan ', FORMAT(e.proximo_orometro - e.orometro_actual, 2), ' ', 
-                              CASE e.tipo_orometro WHEN 'horas' THEN 'hrs' ELSE 'km' END)
-                   WHEN e.proximo_orometro IS NOT NULL AND e.proximo_orometro <= e.orometro_actual THEN 
-                       CONCAT('Excedido por ', FORMAT(e.orometro_actual - e.proximo_orometro, 2), ' ', 
-                              CASE e.tipo_orometro WHEN 'horas' THEN 'hrs' ELSE 'km' END)
-                   ELSE 'Sin programar'
-               END as tiempoRestante
-        FROM equipos e
-        WHERE e.estado IN ('averiado', 'mantenimiento') 
-           OR (e.proximo_orometro IS NOT NULL AND (e.proximo_orometro - e.orometro_actual) <= e.notificacion)
-        ORDER BY 
-            CASE e.estado 
-                WHEN 'averiado' THEN 1
-                WHEN 'mantenimiento' THEN 2
-                ELSE 3
-            END,
-            (e.proximo_orometro - e.orometro_actual) ASC
-        LIMIT 10
-    ");
-    
-    return $equipos ?: [];
-}
-
-/**
- * Obtiene los últimos mantenimientos realizados
- */
-function obtenerUltimosMantenimientos($conexion) {
-    $mantenimientos = $conexion->select("
+    // Mina
+    $mina = $conexion->selectOne("
         SELECT 
-            DATE_FORMAT(h.fecha_realizado, '%d/%m/%Y') as fecha,
-            COALESCE(e.nombre, c.nombre, 'Equipo/Componente eliminado') as equipo,
-            COALESCE(e.codigo, c.codigo, 'N/A') as codigo,
-            CASE 
-                WHEN h.tipo_mantenimiento = 'preventivo' THEN 'Preventivo'
-                WHEN h.tipo_mantenimiento = 'correctivo' THEN 'Correctivo'
-                WHEN h.tipo_mantenimiento = 'predictivo' THEN 'Programado'
-                ELSE h.tipo_mantenimiento
-            END as tipo,
-            h.descripcion,
-            'Completado' as estado
-        FROM historial_mantenimiento h
-        LEFT JOIN equipos e ON h.equipo_id = e.id
-        LEFT JOIN componentes c ON h.componente_id = c.id
-        WHERE h.fecha_realizado IS NOT NULL
-        ORDER BY h.fecha_realizado DESC
-        LIMIT 10
-    ");
-    
-    return $mantenimientos ?: [];
+            COALESCE(SUM(material_extraido), 0) as produccion,
+            COUNT(*) as registros,
+            AVG(ley_inferido_geologo) as ley_promedio
+        FROM produccion_mina 
+        WHERE fecha = ?
+    ", [$hoy]);
+
+    $produccion['mina'] = [
+        'produccion' => $mina ? (float)$mina['produccion'] : 0,
+        'registros' => $mina ? (int)$mina['registros'] : 0,
+        'ley_promedio' => $mina ? (float)($mina['ley_promedio'] ?? 0) : 0,
+        'meta_diaria' => 120.0,
+        'estado' => 'activo'
+    ];
+
+    // Planta
+    $planta = $conexion->selectOne("
+        SELECT 
+            COALESCE(SUM(material_procesado), 0) as produccion,
+            COUNT(*) as registros,
+            AVG(ley_inferido_metalurgista) as ley_promedio
+        FROM planta 
+        WHERE fecha = ?
+    ", [$hoy]);
+
+    $produccion['planta'] = [
+        'produccion' => $planta ? (float)$planta['produccion'] : 0,
+        'registros' => $planta ? (int)$planta['registros'] : 0,
+        'ley_promedio' => $planta ? (float)($planta['ley_promedio'] ?? 0) : 0,
+        'meta_diaria' => 100.0,
+        'estado' => 'activo'
+    ];
+
+    // Amalgamación
+    $amalgamacion = $conexion->selectOne("
+        SELECT 
+            COALESCE(SUM(cantidad_carga_concentrados), 0) as produccion,
+            COUNT(*) as registros,
+            COALESCE(SUM(amalgamacion_gramos), 0) as oro_producido
+        FROM amalgamacion 
+        WHERE fecha = ?
+    ", [$hoy]);
+
+    $produccion['amalgamacion'] = [
+        'produccion' => $amalgamacion ? (float)$amalgamacion['produccion'] : 0,
+        'registros' => $amalgamacion ? (int)$amalgamacion['registros'] : 0,
+        'oro_producido' => $amalgamacion ? (float)$amalgamacion['oro_producido'] : 0,
+        'meta_diaria' => 80.0,
+        'estado' => 'activo'
+    ];
+
+    // Flotación
+    $flotacion = $conexion->selectOne("
+        SELECT 
+            COALESCE(SUM(carga_mineral_promedio), 0) as produccion,
+            COUNT(*) as registros
+        FROM flotacion 
+        WHERE fecha = ?
+    ", [$hoy]);
+
+    $produccion['flotacion'] = [
+        'produccion' => $flotacion ? (float)$flotacion['produccion'] : 0,
+        'registros' => $flotacion ? (int)$flotacion['registros'] : 0,
+        'meta_diaria' => 60.0,
+        'estado' => 'activo'
+    ];
+
+    return $produccion;
 }
 
 /**
- * Obtiene la actividad reciente
+ * Obtiene la tendencia de producción de los últimos 7 días
  */
-function obtenerActividadReciente($conexion) {
-    $actividades = [];
-    
-    // Mantenimientos recientes del historial
-    $mantenimientos = $conexion->select("
+function obtenerTendenciaSemanal($conexion)
+{
+    $fechas = [];
+    $produccionTotal = [];
+    $registrosTotal = [];
+
+    // Generar últimos 7 días
+    for ($i = 6; $i >= 0; $i--) {
+        $fecha = date('Y-m-d', strtotime("-{$i} days"));
+        $fechas[] = date('d/m', strtotime($fecha));
+
+        // Calcular producción total del día
+        $produccionDia = 0;
+        $registrosDia = 0;
+
+        $tablas = [
+            'produccion_mina' => 'material_extraido',
+            'planta' => 'material_procesado',
+            'amalgamacion' => 'cantidad_carga_concentrados',
+            'flotacion' => 'carga_mineral_promedio'
+        ];
+
+        foreach ($tablas as $tabla => $campo) {
+            try {
+                $result = $conexion->selectOne("
+                    SELECT 
+                        COALESCE(SUM({$campo}), 0) as produccion,
+                        COUNT(*) as registros
+                    FROM {$tabla} 
+                    WHERE fecha = ?
+                ", [$fecha]);
+
+                if ($result) {
+                    $produccionDia += $result['produccion'];
+                    $registrosDia += $result['registros'];
+                }
+            } catch (Exception $e) {
+                error_log("Error en tendencia semanal tabla {$tabla}: " . $e->getMessage());
+            }
+        }
+
+        $produccionTotal[] = (float)$produccionDia;
+        $registrosTotal[] = (int)$registrosDia;
+    }
+
+    return [
+        'fechas' => $fechas,
+        'produccion' => $produccionTotal,
+        'registros' => $registrosTotal,
+        'meta_diaria' => 360.0
+    ];
+}
+
+/**
+ * Obtiene la distribución de procesos del último mes
+ */
+function obtenerDistribucionProcesos($conexion)
+{
+    $hace30dias = date('Y-m-d', strtotime('-30 days'));
+    $hoy = date('Y-m-d');
+
+    $distribucion = [];
+
+    // Mina
+    $mina = $conexion->selectOne("
         SELECT 
-            'mantenimiento' as tipo,
-            CONCAT('Mantenimiento completado: ', COALESCE(e.nombre, c.nombre, 'Equipo/Componente')) as titulo,
-            h.descripcion as descripcion,
-            h.fecha_realizado as fecha
-        FROM historial_mantenimiento h
-        LEFT JOIN equipos e ON h.equipo_id = e.id
-        LEFT JOIN componentes c ON h.componente_id = c.id
-        WHERE h.fecha_realizado >= DATE_SUB(NOW(), INTERVAL 7 DAY)
-        ORDER BY h.fecha_realizado DESC
-        LIMIT 5
-    ");
-    
-    foreach ($mantenimientos as $mant) {
-        $actividades[] = [
-            'tipo' => $mant['tipo'],
-            'titulo' => $mant['titulo'],
-            'descripcion' => $mant['descripcion'] ?: 'Sin descripción',
-            'tiempo' => timeAgo($mant['fecha'])
-        ];
-    }
-    
-    // Si no hay actividades reales, mostrar mensaje
-    if (empty($actividades)) {
-        $actividades[] = [
-            'tipo' => 'info',
-            'titulo' => 'Sin actividad reciente',
-            'descripcion' => 'No hay mantenimientos registrados en los últimos 7 días',
-            'tiempo' => 'Sistema iniciado'
-        ];
-    }
-    
-    return $actividades;
+            COALESCE(SUM(material_extraido), 0) as total,
+            COUNT(*) as registros
+        FROM produccion_mina 
+        WHERE fecha BETWEEN ? AND ?
+    ", [$hace30dias, $hoy]);
+
+    $distribucion[] = [
+        'proceso' => 'Mina',
+        'produccion' => $mina ? (float)$mina['total'] : 0,
+        'registros' => $mina ? (int)$mina['registros'] : 0,
+        'color' => '#8b4513'
+    ];
+
+    // Planta
+    $planta = $conexion->selectOne("
+        SELECT 
+            COALESCE(SUM(material_procesado), 0) as total,
+            COUNT(*) as registros
+        FROM planta 
+        WHERE fecha BETWEEN ? AND ?
+    ", [$hace30dias, $hoy]);
+
+    $distribucion[] = [
+        'proceso' => 'Planta',
+        'produccion' => $planta ? (float)$planta['total'] : 0,
+        'registros' => $planta ? (int)$planta['registros'] : 0,
+        'color' => '#228b22'
+    ];
+
+    // Amalgamación
+    $amalgamacion = $conexion->selectOne("
+        SELECT 
+            COALESCE(SUM(cantidad_carga_concentrados), 0) as total,
+            COUNT(*) as registros
+        FROM amalgamacion 
+        WHERE fecha BETWEEN ? AND ?
+    ", [$hace30dias, $hoy]);
+
+    $distribucion[] = [
+        'proceso' => 'Amalgamación',
+        'produccion' => $amalgamacion ? (float)$amalgamacion['total'] : 0,
+        'registros' => $amalgamacion ? (int)$amalgamacion['registros'] : 0,
+        'color' => '#ff8c00'
+    ];
+
+    // Flotación
+    $flotacion = $conexion->selectOne("
+        SELECT 
+            COALESCE(SUM(carga_mineral_promedio), 0) as total,
+            COUNT(*) as registros
+        FROM flotacion 
+        WHERE fecha BETWEEN ? AND ?
+    ", [$hace30dias, $hoy]);
+
+    $distribucion[] = [
+        'proceso' => 'Flotación',
+        'produccion' => $flotacion ? (float)$flotacion['total'] : 0,
+        'registros' => $flotacion ? (int)$flotacion['registros'] : 0,
+        'color' => '#4169e1'
+    ];
+
+    return $distribucion;
 }
 
 /**
  * Obtiene las alertas del sistema
  */
-function obtenerAlertas($conexion) {
+function obtenerAlertas($conexion)
+{
     $alertas = [];
-    
-    // Equipos averiados
-    $averiados = $conexion->select("
-        SELECT nombre, codigo FROM equipos WHERE estado = 'averiado' LIMIT 5
-    ");
-    
-    foreach ($averiados as $equipo) {
-        $alertas[] = [
-            'tipo' => 'critical',
-            'titulo' => 'Equipo Averiado',
-            'descripcion' => "El equipo {$equipo['nombre']} ({$equipo['codigo']}) está fuera de servicio",
-            'tiempo' => 'Requiere atención inmediata'
-        ];
-    }
-    
-    // Mantenimientos vencidos
-    $vencidos = $conexion->select("
-        SELECT e.nombre, e.codigo 
-        FROM equipos e 
-        WHERE e.proximo_orometro IS NOT NULL 
-        AND e.orometro_actual >= e.proximo_orometro 
-        LIMIT 3
-    ");
-    
-    foreach ($vencidos as $equipo) {
+    $hoy = date('Y-m-d');
+    $ayer = date('Y-m-d', strtotime('-1 day'));
+
+    // Verificar si hay producción hoy
+    $produccionHoy = $conexion->selectOne("
+        SELECT COUNT(*) as total FROM (
+            SELECT id FROM produccion_mina WHERE fecha = ?
+            UNION ALL
+            SELECT id FROM planta WHERE fecha = ?
+            UNION ALL
+            SELECT id FROM amalgamacion WHERE fecha = ?
+            UNION ALL
+            SELECT id FROM flotacion WHERE fecha = ?
+        ) as todos
+    ", [$hoy, $hoy, $hoy, $hoy]);
+
+    if (!$produccionHoy || $produccionHoy['total'] == 0) {
         $alertas[] = [
             'tipo' => 'warning',
-            'titulo' => 'Mantenimiento Vencido',
-            'descripcion' => "El equipo {$equipo['nombre']} ({$equipo['codigo']}) tiene mantenimiento vencido",
-            'tiempo' => 'Programar mantenimiento'
+            'titulo' => 'Sin registros hoy',
+            'mensaje' => 'No se han registrado operaciones para el día de hoy',
+            'icono' => 'exclamation-triangle'
         ];
     }
-    
-    // Si no hay alertas, mostrar mensaje informativo
+
+    // Verificar registros incompletos
+    $incompletos = $conexion->selectOne("
+        SELECT COUNT(*) as total FROM (
+            SELECT pm.id FROM produccion_mina pm
+            LEFT JOIN laboratorio l ON pm.id = l.registro_id AND l.tipo_registro = 'produccion_mina'
+            WHERE pm.fecha >= ? AND l.id IS NULL
+            UNION ALL
+            SELECT p.id FROM planta p
+            LEFT JOIN laboratorio l ON p.id = l.registro_id AND l.tipo_registro = 'planta'
+            WHERE p.fecha >= ? AND l.id IS NULL
+        ) as incompletos
+    ", [$ayer, $ayer]);
+
+    if ($incompletos && $incompletos['total'] > 0) {
+        $alertas[] = [
+            'tipo' => 'danger',
+            'titulo' => 'Registros incompletos',
+            'mensaje' => "{$incompletos['total']} registros requieren datos de laboratorio",
+            'icono' => 'flask'
+        ];
+    }
+
+    // Verificar baja producción
+    $produccionAyer = 0;
+    $tablas = [
+        'produccion_mina' => 'material_extraido',
+        'planta' => 'material_procesado',
+        'amalgamacion' => 'cantidad_carga_concentrados',
+        'flotacion' => 'carga_mineral_promedio'
+    ];
+
+    foreach ($tablas as $tabla => $campo) {
+        $result = $conexion->selectOne("
+            SELECT COALESCE(SUM({$campo}), 0) as total 
+            FROM {$tabla} 
+            WHERE fecha = ?
+        ", [$ayer]);
+        $produccionAyer += $result ? $result['total'] : 0;
+    }
+
+    if ($produccionAyer < 300) { // Meta mínima diaria
+        $alertas[] = [
+            'tipo' => 'warning',
+            'titulo' => 'Producción por debajo de meta',
+            'mensaje' => 'La producción de ayer fue de ' . number_format($produccionAyer, 1) . ' t (Meta: 360 t)',
+            'icono' => 'trending-down'
+        ];
+    }
+
+    // Si no hay alertas, mostrar estado normal
     if (empty($alertas)) {
         $alertas[] = [
-            'tipo' => 'info',
-            'titulo' => 'Sistema Operativo',
-            'descripcion' => 'No hay alertas críticas en este momento',
-            'tiempo' => 'Todo funcionando correctamente'
+            'tipo' => 'success',
+            'titulo' => 'Operaciones normales',
+            'mensaje' => 'Todos los sistemas funcionando correctamente',
+            'icono' => 'check-circle'
         ];
     }
-    
+
     return $alertas;
 }
 
 /**
- * Maneja las exportaciones
+ * Obtiene la actividad reciente
  */
-function handleExport($tipo, $subtipo = null) {
-    switch ($tipo) {
-        case 'resumen':
-            exportarResumenGeneral();
-            break;
-        case 'tabla':
-            exportarTabla($subtipo);
-            break;
-        default:
-            http_response_code(400);
-            echo json_encode(['success' => false, 'message' => 'Tipo de exportación no válido']);
+function obtenerActividadReciente($conexion)
+{
+    $actividades = [];
+
+    // Últimos registros de cada proceso
+    $procesos = [
+        'produccion_mina' => 'Mina',
+        'planta' => 'Planta',
+        'amalgamacion' => 'Amalgamación',
+        'flotacion' => 'Flotación'
+    ];
+
+    foreach ($procesos as $tabla => $nombre) {
+        try {
+            $ultimo = $conexion->selectOne("
+                SELECT fecha, creado_en, codigo_registro
+                FROM {$tabla} 
+                ORDER BY creado_en DESC 
+                LIMIT 1
+            ");
+
+            if ($ultimo) {
+                $actividades[] = [
+                    'proceso' => $nombre,
+                    'accion' => 'Nuevo registro',
+                    'codigo' => $ultimo['codigo_registro'],
+                    'fecha' => $ultimo['fecha'],
+                    'timestamp' => $ultimo['creado_en'],
+                    'tiempo_relativo' => calcularTiempoRelativo($ultimo['creado_en'])
+                ];
+            }
+        } catch (Exception $e) {
+            error_log("Error obteniendo actividad de {$tabla}: " . $e->getMessage());
+        }
+    }
+
+    // Ordenar por timestamp más reciente
+    usort($actividades, function ($a, $b) {
+        return strtotime($b['timestamp']) - strtotime($a['timestamp']);
+    });
+
+    return array_slice($actividades, 0, 5); // Últimas 5 actividades
+}
+
+/**
+ * Obtiene los KPIs operacionales
+ */
+function obtenerKPIsOperacionales($conexion)
+{
+    $hace7dias = date('Y-m-d', strtotime('-7 days'));
+    $hoy = date('Y-m-d');
+
+    // Disponibilidad de equipos (simulada)
+    $disponibilidad = 92.5;
+
+    // Tiempo promedio de proceso (simulado)
+    $tiempoPromedio = 6.8;
+
+    // Calidad de ley (precisión laboratorio vs inferido)
+    $precision = $conexion->selectOne("
+        SELECT 
+            AVG(ABS(l.ley_laboratorio - COALESCE(pm.ley_inferido_geologo, p.ley_inferido_metalurgista, 0)) / l.ley_laboratorio * 100) as diferencia
+        FROM laboratorio l
+        LEFT JOIN produccion_mina pm ON l.registro_id = pm.id AND l.tipo_registro = 'produccion_mina'
+        LEFT JOIN planta p ON l.registro_id = p.id AND l.tipo_registro = 'planta'
+        WHERE DATE(l.creado_en) BETWEEN ? AND ? 
+        AND l.ley_laboratorio > 0
+    ", [$hace7dias, $hoy]);
+
+    $calidadLey = $precision && $precision['diferencia'] ?
+        100 - (float)$precision['diferencia'] : 95;
+
+    // Cumplimiento de metas
+    $metaTotal = 360 * 7; // Meta semanal
+    $produccionSemanal = 0;
+
+    $tablas = [
+        'produccion_mina' => 'material_extraido',
+        'planta' => 'material_procesado',
+        'amalgamacion' => 'cantidad_carga_concentrados',
+        'flotacion' => 'carga_mineral_promedio'
+    ];
+
+    foreach ($tablas as $tabla => $campo) {
+        $result = $conexion->selectOne("
+            SELECT COALESCE(SUM({$campo}), 0) as total 
+            FROM {$tabla} 
+            WHERE fecha BETWEEN ? AND ?
+        ", [$hace7dias, $hoy]);
+        $produccionSemanal += $result ? $result['total'] : 0;
+    }
+
+    $cumplimientoMetas = $metaTotal > 0 ? ($produccionSemanal / $metaTotal) * 100 : 0;
+
+    return [
+        'disponibilidad_equipos' => (float)$disponibilidad,
+        'tiempo_promedio_proceso' => (float)$tiempoPromedio,
+        'calidad_ley' => (float)$calidadLey,
+        'cumplimiento_metas' => (float)$cumplimientoMetas
+    ];
+}
+
+/**
+ * Calcula el tiempo relativo desde una fecha
+ */
+function calcularTiempoRelativo($timestamp)
+{
+    $tiempo = time() - strtotime($timestamp);
+
+    if ($tiempo < 60) {
+        return 'Hace ' . $tiempo . ' segundos';
+    } elseif ($tiempo < 3600) {
+        return 'Hace ' . floor($tiempo / 60) . ' minutos';
+    } elseif ($tiempo < 86400) {
+        return 'Hace ' . floor($tiempo / 3600) . ' horas';
+    } else {
+        return 'Hace ' . floor($tiempo / 86400) . ' días';
     }
 }
-
-/**
- * Exporta un resumen general en PDF
- */
-function exportarResumenGeneral() {
-    header('Content-Type: application/pdf');
-    header('Content-Disposition: attachment; filename="resumen-dashboard-' . date('Y-m-d') . '.pdf"');
-    echo "PDF de resumen general - Implementar con TCPDF";
-}
-
-/**
- * Exporta una tabla específica
- */
-function exportarTabla($tipo) {
-    header('Content-Type: application/vnd.ms-excel');
-    header('Content-Disposition: attachment; filename="tabla-' . $tipo . '-' . date('Y-m-d') . '.xlsx"');
-    echo "Excel de tabla $tipo - Implementar con PhpSpreadsheet";
-}
-
-/**
- * Función auxiliar para calcular tiempo transcurrido
- */
-function timeAgo($datetime) {
-    $time = time() - strtotime($datetime);
-    
-    if ($time < 60) return 'Hace menos de 1 minuto';
-    if ($time < 3600) return 'Hace ' . floor($time/60) . ' minutos';
-    if ($time < 86400) return 'Hace ' . floor($time/3600) . ' horas';
-    if ($time < 2592000) return 'Hace ' . floor($time/86400) . ' días';
-    if ($time < 31536000) return 'Hace ' . floor($time/2592000) . ' meses';
-    
-    return 'Hace ' . floor($time/31536000) . ' años';
-}
-?>

@@ -1,72 +1,77 @@
+// import { Chart } from "@/components/ui/chart"
 /**
- * Dashboard JavaScript - SIGESMANCOR
- * Sistema de Gestión de Mantenimiento CORDIAL SAC
+ * Dashboard JavaScript - SISPROMIN
+ * Sistema de Producción Minera
  */
 
 // Variables globales
-let chartEstadoEquipos
-let chartMantenimientosMes
-let chartUbicaciones
-let dashboardData = {}
+let chartTendencia;
+let chartDistribucion;
+let chartProduccionHoy;
+let dashboardData = {};
+let $; // Declare the $ variable
 
-// Configuración de colores
-const colors = {
-  primary: "#1571b0", 
+// Configuración de colores para minería
+const coloresDashboard = {
+  mina: "#8b4513",
+  planta: "#228b22",
+  amalgamacion: "#ff8c00",
+  flotacion: "#4169e1",
+  primary: "#1571b0",
   success: "#20c997",
-  warning: "#ff8c00",
-  danger: "#e63946",
+  warning: "#ffc107",
+  danger: "#dc3545",
   info: "#17a2b8",
-  secondary: "#6c757d",
-}
+};
 
-// Declaración de la variable $ para evitar errores de lint
-const $ = window.$
+// Import jQuery
+$ = window.jQuery;
 
 // Inicialización cuando el DOM está listo
 $(document).ready(() => {
-  console.log("Inicializando Dashboard SIGESMANCOR...")
+  console.log("Inicializando Dashboard SISPROMIN...");
 
   // Cargar datos iniciales
-  cargarDatosDashboard()
+  cargarDatosDashboard();
 
   // Configurar eventos
-  configurarEventos()
+  configurarEventos();
 
-  // Actualizar timestamp
-  actualizarTimestamp()
+  // Actualizar cada 5 minutos
+  setInterval(cargarDatosDashboard, 300000);
 
-  // Configurar actualización automática cada 5 minutos
-  setInterval(cargarDatosDashboard, 300000)
-})
+  // Actualizar reloj
+  actualizarReloj();
+  setInterval(actualizarReloj, 1000);
+});
 
 /**
  * Configura todos los eventos del dashboard
  */
 function configurarEventos() {
-  // Botón actualizar datos
-  $("#btn-actualizar-datos").on("click", function () {
-    $(this).addClass("loading")
+  // Botón actualizar
+  $("#btn-actualizar-dashboard").on("click", function () {
+    $(this).addClass("loading");
     cargarDatosDashboard().finally(() => {
-      $(this).removeClass("loading")
-    })
-  })
+      $(this).removeClass("loading");
+    });
+  });
 
-  // Botón exportar resumen
-  $("#btn-exportar-resumen").on("click", exportarResumenGeneral)
+  // Botones de navegación rápida
+  $(".quick-nav-btn").on("click", function () {
+    const modulo = $(this).data("modulo");
+    if (modulo) {
+      window.location.href = modulo;
+    }
+  });
 
-  // Botones de exportación de gráficas
-  $("#btn-export-equipos").on("click", () => exportarGrafica("equipos"))
-  $("#btn-export-mantenimientos").on("click", () => exportarGrafica("mantenimientos"))
-  $("#btn-export-ubicaciones").on("click", () => exportarGrafica("ubicaciones"))
-
-  // Botones de exportación de tablas
-  $("#btn-export-atencion").on("click", () => exportarTabla("atencion"))
-  $("#btn-export-ultimos").on("click", () => exportarTabla("ultimos"))
-
-  // Ver todo el historial
-  $("#btn-ver-todo-historial").on("click", () => {
-    window.location.href = "modulos/mantenimiento/historial/"
-  })
+  // Tarjetas métricas clickeables
+  $(".metric-card").on("click", function () {
+    $(this).addClass("clicked");
+    setTimeout(() => {
+      $(this).removeClass("clicked");
+    }, 200);
+  });
 }
 
 /**
@@ -74,97 +79,301 @@ function configurarEventos() {
  */
 async function cargarDatosDashboard() {
   try {
-    console.log("Cargando datos del dashboard...")
+    console.log("Cargando datos del dashboard...");
 
     // Mostrar indicadores de carga
-    mostrarCargando()
+    mostrarCargando();
 
-    // Cargar datos desde la API
-    const response = await fetch("api/dashboard_data.php")
-    const data = await response.json()
+    const response = await fetch("api/dashboard_data.php", {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
 
     if (data.success) {
-      dashboardData = data.data
+      dashboardData = data.data;
 
-      // Actualizar estadísticas principales
-      actualizarEstadisticasPrincipales(dashboardData.estadisticas)
+      // Actualizar métricas principales
+      actualizarMetricasPrincipales(dashboardData.metricas_principales);
+
+      // Actualizar producción de hoy
+      actualizarProduccionHoy(dashboardData.produccion_hoy);
 
       // Crear gráficas
-      crearGraficas(dashboardData.graficas)
+      crearGraficaTendenciaSemanal(dashboardData.tendencia_semanal);
+      crearGraficaDistribucionProcesos(dashboardData.distribucion_procesos);
+      crearGraficaProduccionHoy(dashboardData.produccion_hoy);
 
-      // Cargar tablas
-      cargarTablas(dashboardData.tablas)
+      // Actualizar alertas
+      actualizarAlertas(dashboardData.alertas);
 
-      // Cargar actividad reciente
-      cargarActividadReciente(dashboardData.actividad)
+      // Actualizar actividad reciente
+      actualizarActividadReciente(dashboardData.actividad_reciente);
 
-      // Cargar alertas
-      cargarAlertas(dashboardData.alertas)
+      // Actualizar KPIs
+      actualizarKPIsOperacionales(dashboardData.kpis_operacionales);
 
-      console.log("Datos del dashboard cargados exitosamente")
+      console.log("Dashboard cargado exitosamente");
     } else {
-      throw new Error(data.message || "Error al cargar datos")
+      throw new Error(data.message || "Error al cargar datos");
     }
   } catch (error) {
-    console.error("Error al cargar datos del dashboard:", error)
-    mostrarError("Error al cargar los datos del dashboard")
+    console.error("Error al cargar dashboard:", error);
+    mostrarError("Error al cargar los datos del dashboard");
   } finally {
-    ocultarCargando()
-    actualizarTimestamp()
+    ocultarCargando();
   }
 }
 
 /**
- * Actualiza las estadísticas principales
+ * Actualiza las métricas principales
  */
-function actualizarEstadisticasPrincipales(stats) {
-  // Animar números
-  animarNumero("#total-equipos", stats.totalEquipos)
-  animarNumero("#equipos-activos", stats.equiposActivos)
-  animarNumero("#mantenimientos-pendientes", stats.mantenimientosPendientes)
-  animarNumero("#equipos-criticos", stats.equiposCriticos)
+function actualizarMetricasPrincipales(metricas) {
+  // Producción hoy
+  animarNumero("#produccion-hoy", metricas.produccion_hoy, 2000, 1);
 
-  // Actualizar cambios y porcentajes
-  $("#equipos-change").text(`+${stats.equiposNuevos} este mes`)
-  $("#activos-percentage").text(`${Math.round((stats.equiposActivos / stats.totalEquipos) * 100)}%`)
-  $("#pendientes-change").text("Programados")
-  $("#criticos-change").text("Requieren atención")
-}
+  // Variación vs ayer
+  const variacion = metricas.variacion_produccion;
+  const variacionElement = $("#variacion-produccion");
+  variacionElement.text(`${variacion >= 0 ? "+" : ""}${variacion.toFixed(1)}%`);
+  variacionElement.removeClass("positive negative neutral");
 
-/**
- * Crea todas las gráficas del dashboard
- */
-function crearGraficas(graficas) {
-  // Gráfica de estado de equipos (Dona)
-  crearGraficaEstadoEquipos(graficas.estadoEquipos)
-
-  // Gráfica de mantenimientos por mes (Barras)
-  crearGraficaMantenimientosMes(graficas.mantenimientosMes)
-
-  // Gráfica de distribución por ubicación (Barras horizontales)
-  crearGraficaUbicaciones(graficas.ubicaciones)
-}
-
-/**
- * Crea la gráfica de estado de equipos
- */
-function crearGraficaEstadoEquipos(data) {
-  const ctx = document.getElementById("chart-estado-equipos").getContext("2d")
-
-  if (chartEstadoEquipos) {
-    chartEstadoEquipos.destroy()
+  if (variacion > 0) {
+    variacionElement.addClass("positive");
+  } else if (variacion < 0) {
+    variacionElement.addClass("negative");
+  } else {
+    variacionElement.addClass("neutral");
   }
 
-  chartEstadoEquipos = new Chart(ctx, {
-    type: "doughnut",
+  // Registros hoy
+  animarNumero("#registros-hoy", metricas.registros_hoy);
+
+  // Ley promedio
+  animarNumero("#ley-promedio", metricas.ley_promedio, 2000, 2);
+
+  // Registros incompletos
+  animarNumero("#registros-incompletos", metricas.registros_incompletos);
+
+  // Turnos activos
+  animarNumero("#turnos-activos", metricas.turnos_activos);
+
+  // Eficiencia operacional
+  animarNumero(
+    "#eficiencia-operacional",
+    metricas.eficiencia_operacional,
+    2000,
+    1
+  );
+
+  // Actualizar barra de progreso de eficiencia
+  const eficienciaBar = $("#eficiencia-bar");
+  eficienciaBar.css("width", `${metricas.eficiencia_operacional}%`);
+
+  // Cambiar color según eficiencia
+  eficienciaBar.removeClass("bg-success bg-warning bg-danger");
+  if (metricas.eficiencia_operacional >= 85) {
+    eficienciaBar.addClass("bg-success");
+  } else if (metricas.eficiencia_operacional >= 70) {
+    eficienciaBar.addClass("bg-warning");
+  } else {
+    eficienciaBar.addClass("bg-danger");
+  }
+}
+
+/**
+ * Actualiza la sección de producción de hoy
+ */
+function actualizarProduccionHoy(produccionHoy) {
+  const container = $("#produccion-hoy-detalle");
+  container.empty();
+
+  Object.keys(produccionHoy).forEach((proceso) => {
+    const data = produccionHoy[proceso];
+    const porcentajeMeta =
+      data.meta_diaria > 0 ? (data.produccion / data.meta_diaria) * 100 : 0;
+    const colorProceso = coloresDashboard[proceso] || coloresDashboard.primary;
+    const estadoClass =
+      porcentajeMeta >= 100
+        ? "success"
+        : porcentajeMeta >= 80
+        ? "warning"
+        : "danger";
+
+    const procesoCard = `
+      <div class="proceso-card">
+        <div class="proceso-info">
+          <div class="proceso-icon" style="background: ${colorProceso}">
+            <i class="bi bi-${getIconoProceso(proceso)}"></i>
+          </div>
+          <div class="proceso-details">
+            <h4>${proceso.charAt(0).toUpperCase() + proceso.slice(1)}</h4>
+            <span class="proceso-registros">${data.registros} registros</span>
+          </div>
+        </div>
+        <div class="proceso-metrics">
+          <div class="proceso-metric">
+            <span class="proceso-metric-value">${data.produccion.toFixed(
+              1
+            )}</span>
+            <span class="proceso-metric-label">Prod. (t)</span>
+          </div>
+          <div class="proceso-metric">
+            <span class="proceso-metric-value">${data.meta_diaria.toFixed(
+              0
+            )}</span>
+            <span class="proceso-metric-label">Meta (t)</span>
+          </div>
+          <div class="proceso-metric">
+            <span class="proceso-metric-value">${porcentajeMeta.toFixed(
+              0
+            )}%</span>
+            <span class="proceso-metric-label">Cumplim.</span>
+          </div>
+        </div>
+        <div class="proceso-estado">
+          <span class="badge bg-${estadoClass}">${data.estado}</span>
+        </div>
+      </div>
+    `;
+
+    container.append(procesoCard);
+  });
+}
+
+/**
+ * Crea la gráfica de tendencia semanal
+ */
+function crearGraficaTendenciaSemanal(data) {
+  const ctx = document
+    .getElementById("chart-tendencia-semanal")
+    .getContext("2d");
+
+  if (chartTendencia) {
+    chartTendencia.destroy();
+  }
+
+  chartTendencia = new Chart(ctx, {
+    type: "line",
     data: {
-      labels: data.labels,
+      labels: data.fechas,
       datasets: [
         {
-          data: data.values,
-          backgroundColor: [colors.success, colors.warning, colors.danger, colors.secondary, colors.info],
+          label: "Producción Diaria",
+          data: data.produccion,
+          borderColor: coloresDashboard.primary,
+          backgroundColor: coloresDashboard.primary + "20",
+          tension: 0.4,
+          fill: true,
+          pointBackgroundColor: coloresDashboard.primary,
+          pointBorderColor: "#fff",
+          pointBorderWidth: 2,
+          pointRadius: 5,
+        },
+        {
+          label: "Meta Diaria",
+          data: Array(data.fechas.length).fill(data.meta_diaria),
+          borderColor: coloresDashboard.danger,
+          backgroundColor: "transparent",
+          borderDash: [5, 5],
+          pointRadius: 0,
+          tension: 0,
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          position: "top",
+          labels: {
+            usePointStyle: true,
+            padding: 20,
+            font: {
+              size: 12,
+              weight: "600",
+            },
+          },
+        },
+        tooltip: {
+          callbacks: {
+            label: (context) => {
+              return `${context.dataset.label}: ${context.parsed.y.toFixed(
+                1
+              )} t`;
+            },
+          },
+        },
+      },
+      scales: {
+        x: {
+          grid: {
+            display: false,
+          },
+          ticks: {
+            font: {
+              size: 11,
+              weight: "500",
+            },
+          },
+        },
+        y: {
+          beginAtZero: true,
+          grid: {
+            color: "rgba(0,0,0,0.1)",
+          },
+          ticks: {
+            font: {
+              size: 11,
+              weight: "500",
+            },
+            callback: (value) => value.toFixed(0) + " t",
+          },
+        },
+      },
+      animation: {
+        duration: 2000,
+        easing: "easeOutQuart",
+      },
+    },
+  });
+}
+
+/**
+ * Crea la gráfica de distribución de procesos
+ */
+function crearGraficaDistribucionProcesos(data) {
+  const ctx = document
+    .getElementById("chart-distribucion-procesos")
+    .getContext("2d");
+
+  if (chartDistribucion) {
+    chartDistribucion.destroy();
+  }
+
+  const labels = data.map((item) => item.proceso);
+  const valores = data.map((item) => item.produccion);
+  const colores = data.map((item) => item.color);
+
+  chartDistribucion = new Chart(ctx, {
+    type: "doughnut",
+    data: {
+      labels: labels,
+      datasets: [
+        {
+          data: valores,
+          backgroundColor: colores,
           borderWidth: 3,
           borderColor: "#fff",
+          hoverBorderWidth: 4,
         },
       ],
     },
@@ -175,10 +384,10 @@ function crearGraficaEstadoEquipos(data) {
         legend: {
           position: "bottom",
           labels: {
-            padding: 15,
+            padding: 20,
             usePointStyle: true,
             font: {
-              size: 11,
+              size: 12,
               weight: "600",
             },
           },
@@ -186,9 +395,11 @@ function crearGraficaEstadoEquipos(data) {
         tooltip: {
           callbacks: {
             label: (context) => {
-              const total = context.dataset.data.reduce((a, b) => a + b, 0)
-              const percentage = Math.round((context.parsed / total) * 100)
-              return `${context.label}: ${context.parsed} (${percentage}%)`
+              const total = context.dataset.data.reduce((a, b) => a + b, 0);
+              const percentage = Math.round((context.parsed / total) * 100);
+              return `${context.label}: ${context.parsed.toFixed(
+                1
+              )} t (${percentage}%)`;
             },
           },
         },
@@ -196,46 +407,48 @@ function crearGraficaEstadoEquipos(data) {
       cutout: "60%",
       animation: {
         animateRotate: true,
-        duration: 1500,
+        duration: 2000,
       },
     },
-  })
+  });
 }
 
 /**
- * Crea la gráfica de mantenimientos por mes
+ * Crea la gráfica de producción de hoy (barras)
  */
-function crearGraficaMantenimientosMes(data) {
-  const ctx = document.getElementById("chart-mantenimientos-mes").getContext("2d")
+function crearGraficaProduccionHoy(data) {
+  const ctx = document.getElementById("chart-produccion-hoy").getContext("2d");
 
-  if (chartMantenimientosMes) {
-    chartMantenimientosMes.destroy()
+  if (chartProduccionHoy) {
+    chartProduccionHoy.destroy();
   }
 
-  chartMantenimientosMes = new Chart(ctx, {
+  const procesos = Object.keys(data);
+  const produccion = procesos.map((p) => data[p].produccion);
+  const metas = procesos.map((p) => data[p].meta_diaria);
+  const colores = procesos.map(
+    (p) => coloresDashboard[p] || coloresDashboard.primary
+  );
+
+  chartProduccionHoy = new Chart(ctx, {
     type: "bar",
     data: {
-      labels: data.labels,
+      labels: procesos.map((p) => p.charAt(0).toUpperCase() + p.slice(1)),
       datasets: [
         {
-          label: "Preventivo",
-          data: data.preventivo,
-          backgroundColor: colors.success,
-          borderRadius: 4,
+          label: "Producción Actual",
+          data: produccion,
+          backgroundColor: colores,
+          borderRadius: 6,
           borderSkipped: false,
         },
         {
-          label: "Correctivo",
-          data: data.correctivo,
-          backgroundColor: colors.danger,
-          borderRadius: 4,
-          borderSkipped: false,
-        },
-        {
-          label: "Programado",
-          data: data.programado,
-          backgroundColor: colors.warning,
-          borderRadius: 4,
+          label: "Meta Diaria",
+          data: metas,
+          backgroundColor: "rgba(220, 53, 69, 0.3)",
+          borderColor: coloresDashboard.danger,
+          borderWidth: 2,
+          borderRadius: 6,
           borderSkipped: false,
         },
       ],
@@ -248,13 +461,22 @@ function crearGraficaMantenimientosMes(data) {
           position: "top",
           labels: {
             usePointStyle: true,
-            padding: 15,
+            padding: 20,
             font: {
-              size: 11,
+              size: 12,
               weight: "600",
             },
           },
         },
+        tooltip: {
+          callbacks: {
+            label: (context) => {
+              return `${context.dataset.label}: ${context.parsed.y.toFixed(
+                1
+              )} t`;
+            },
+          },
+        },
       },
       scales: {
         x: {
@@ -263,7 +485,7 @@ function crearGraficaMantenimientosMes(data) {
           },
           ticks: {
             font: {
-              size: 10,
+              size: 11,
               weight: "500",
             },
           },
@@ -275,386 +497,206 @@ function crearGraficaMantenimientosMes(data) {
           },
           ticks: {
             font: {
-              size: 10,
+              size: 11,
               weight: "500",
             },
+            callback: (value) => value.toFixed(0) + " t",
           },
         },
       },
       animation: {
-        duration: 1500,
+        duration: 2000,
         easing: "easeOutQuart",
       },
     },
-  })
+  });
 }
 
 /**
- * Crea la gráfica de distribución por ubicaciones
+ * Actualiza las alertas del sistema
  */
-function crearGraficaUbicaciones(data) {
-  const ctx = document.getElementById("chart-ubicaciones").getContext("2d")
+function actualizarAlertas(alertas) {
+  const container = $("#alertas-container");
+  container.empty();
 
-  if (chartUbicaciones) {
-    chartUbicaciones.destroy()
-  }
-
-  chartUbicaciones = new Chart(ctx, {
-    type: "bar",
-    data: {
-      labels: data.labels,
-      datasets: [
-        {
-          label: "Equipos",
-          data: data.values,
-          backgroundColor: colors.primary,
-          borderRadius: 4,
-          borderSkipped: false,
-        },
-      ],
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      indexAxis: "y",
-      plugins: {
-        legend: {
-          display: false,
-        },
-      },
-      scales: {
-        x: {
-          beginAtZero: true,
-          grid: {
-            color: "rgba(0,0,0,0.1)",
-          },
-          ticks: {
-            font: {
-              size: 10,
-              weight: "500",
-            },
-          },
-        },
-        y: {
-          grid: {
-            display: false,
-          },
-          ticks: {
-            font: {
-              size: 10,
-              weight: "500",
-            },
-          },
-        },
-      },
-      animation: {
-        duration: 1500,
-        easing: "easeOutQuart",
-      },
-    },
-  })
+  alertas.forEach((alerta) => {
+    const alertaElement = `
+            <div class="alert alert-${alerta.tipo} alert-dismissible fade show" role="alert">
+                <i class="bi bi-${alerta.icono} me-2"></i>
+                <strong>${alerta.titulo}:</strong> ${alerta.mensaje}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        `;
+    container.append(alertaElement);
+  });
 }
 
 /**
- * Carga las tablas del dashboard
+ * Actualiza la actividad reciente
  */
-function cargarTablas(tablas) {
-  // Tabla de equipos que requieren atención
-  cargarTablaEquiposAtencion(tablas.equiposAtencion)
-
-  // Tabla de últimos mantenimientos
-  cargarTablaUltimosMantenimientos(tablas.ultimosMantenimientos)
-}
-
-/**
- * Carga la tabla de equipos que requieren atención
- */
-function cargarTablaEquiposAtencion(equipos) {
-  const tbody = $("#tabla-equipos-atencion tbody")
-  tbody.empty()
-
-  if (equipos.length === 0) {
-    tbody.append(`
-            <tr>
-                <td colspan="5" class="text-center">No hay equipos que requieran atención inmediata</td>
-            </tr>
-        `)
-    return
-  }
-
-  equipos.forEach((equipo) => {
-    const prioridadClass = equipo.prioridad.toLowerCase()
-    const estadoClass = equipo.estado.toLowerCase()
-
-    tbody.append(`
-            <tr>
-                <td>
-                    <strong>${equipo.nombre}</strong><br>
-                    <small class="text-muted">${equipo.codigo}</small>
-                </td>
-                <td>${equipo.ubicacion}</td>
-                <td><span class="status-badge ${estadoClass}">${equipo.estado}</span></td>
-                <td>
-                    <strong>${equipo.proximoMantenimiento}</strong><br>
-                    <small class="text-muted">${equipo.tiempoRestante}</small>
-                </td>
-                <td>
-                    <button class="btn-table-action" onclick="verEquipo(${equipo.id})" title="Ver detalles">
-                        <i class="bi bi-eye"></i>
-                    </button>
-                    <button class="btn-table-action" onclick="programarMantenimiento(${equipo.id})" title="Programar mantenimiento">
-                        <i class="bi bi-calendar-plus"></i>
-                    </button>
-                </td>
-            </tr>
-        `)
-  })
-}
-
-/**
- * Carga la tabla de últimos mantenimientos
- */
-function cargarTablaUltimosMantenimientos(mantenimientos) {
-  const tbody = $("#tabla-ultimos-mantenimientos tbody")
-  tbody.empty()
-
-  if (mantenimientos.length === 0) {
-    tbody.append(`
-            <tr>
-                <td colspan="4" class="text-center">No hay mantenimientos recientes</td>
-            </tr>
-        `)
-    return
-  }
-
-  mantenimientos.forEach((mantenimiento) => {
-    const tipoClass = mantenimiento.tipo.toLowerCase()
-    const estadoClass = mantenimiento.estado.toLowerCase()
-
-    tbody.append(`
-            <tr>
-                <td>${mantenimiento.fecha}</td>
-                <td>
-                    <strong>${mantenimiento.equipo}</strong><br>
-                    <small class="text-muted">${mantenimiento.codigo}</small>
-                </td>
-                <td><span class="status-badge ${tipoClass}">${mantenimiento.tipo}</span></td>
-                <td>${mantenimiento.descripcion}</td>
-            </tr>
-        `)
-  })
-}
-
-/**
- * Carga la actividad reciente
- */
-function cargarActividadReciente(actividades) {
-  const container = $("#timeline-actividad")
-  container.empty()
+function actualizarActividadReciente(actividades) {
+  const container = $("#actividad-reciente");
+  container.empty();
 
   if (actividades.length === 0) {
-    container.append(`
-            <div class="timeline-loading">
-                <span>No hay actividad reciente</span>
-            </div>
-        `)
-    return
+    container.append(
+      '<p class="text-muted text-center">No hay actividad reciente</p>'
+    );
+    return;
   }
 
   actividades.forEach((actividad) => {
-    const iconClass = getActivityIconClass(actividad.tipo)
-
-    container.append(`
-            <div class="timeline-item">
-                <div class="timeline-icon ${iconClass}">
-                    <i class="bi ${getActivityIcon(actividad.tipo)}"></i>
+    const actividadElement = `
+            <div class="actividad-item">
+                <div class="actividad-icon">
+                    <i class="bi bi-${getIconoProceso(
+                      actividad.proceso.toLowerCase()
+                    )}"></i>
                 </div>
-                <div class="timeline-content">
-                    <div class="timeline-title">${actividad.titulo}</div>
-                    <div class="timeline-description">${actividad.descripcion}</div>
-                    <div class="timeline-time">${actividad.tiempo}</div>
-                </div>
-            </div>
-        `)
-  })
-}
-
-/**
- * Carga las alertas y notificaciones
- */
-function cargarAlertas(alertas) {
-  const container = $("#container-alertas")
-  const totalAlertas = $("#total-alertas")
-
-  container.empty()
-  totalAlertas.text(alertas.length)
-
-  if (alertas.length === 0) {
-    container.append(`
-            <div class="alert-loading">
-                <span>No hay alertas pendientes</span>
-            </div>
-        `)
-    return
-  }
-
-  alertas.forEach((alerta) => {
-    const tipoClass = alerta.tipo.toLowerCase()
-
-    container.append(`
-            <div class="alert-item ${tipoClass}">
-                <div class="alert-icon">
-                    <i class="bi ${getAlertIcon(alerta.tipo)}"></i>
-                </div>
-                <div class="alert-content">
-                    <div class="alert-title">${alerta.titulo}</div>
-                    <div class="alert-description">${alerta.descripcion}</div>
-                    <div class="alert-time">${alerta.tiempo}</div>
+                <div class="actividad-content">
+                    <div class="actividad-titulo">${actividad.proceso} - ${
+      actividad.accion
+    }</div>
+                    <div class="actividad-detalle">Código: ${
+                      actividad.codigo
+                    }</div>
+                    <div class="actividad-tiempo">${
+                      actividad.tiempo_relativo
+                    }</div>
                 </div>
             </div>
-        `)
-  })
+        `;
+    container.append(actividadElement);
+  });
 }
 
 /**
- * Funciones auxiliares
+ * Actualiza los KPIs operacionales
  */
-function getActivityIconClass(tipo) {
-  const classes = {
-    mantenimiento: "success",
-    alerta: "warning",
-    error: "danger",
-    info: "info",
-  }
-  return classes[tipo] || "info"
-}
+function actualizarKPIsOperacionales(kpis) {
+  // Disponibilidad de equipos
+  animarNumero("#kpi-disponibilidad", kpis.disponibilidad_equipos, 2000, 1);
+  actualizarBarraProgreso("#disponibilidad-bar", kpis.disponibilidad_equipos);
 
-function getActivityIcon(tipo) {
-  const icons = {
-    mantenimiento: "bi-tools",
-    alerta: "bi-exclamation-triangle",
-    error: "bi-x-circle",
-    info: "bi-info-circle",
-  }
-  return icons[tipo] || "bi-info-circle"
-}
+  // Tiempo promedio de proceso
+  animarNumero("#kpi-tiempo-proceso", kpis.tiempo_promedio_proceso, 2000, 1);
 
-function getAlertIcon(tipo) {
-  const icons = {
-    critical: "bi-exclamation-triangle-fill",
-    warning: "bi-exclamation-circle-fill",
-    info: "bi-info-circle-fill",
-  }
-  return icons[tipo] || "bi-info-circle-fill"
-}
+  // Calidad de ley
+  animarNumero("#kpi-calidad-ley", kpis.calidad_ley, 2000, 1);
+  actualizarBarraProgreso("#calidad-bar", kpis.calidad_ley);
 
-/**
- * Anima un número desde 0 hasta el valor final
- */
-function animarNumero(selector, valorFinal, duracion = 1500) {
-  const elemento = $(selector)
-  const valorInicial = 0
-  const incremento = valorFinal / (duracion / 16)
-  let valorActual = valorInicial
-
-  const timer = setInterval(() => {
-    valorActual += incremento
-    if (valorActual >= valorFinal) {
-      valorActual = valorFinal
-      clearInterval(timer)
-    }
-    elemento.text(Math.floor(valorActual).toLocaleString())
-  }, 16)
-}
-
-/**
- * Funciones de exportación
- */
-function exportarResumenGeneral() {
-  window.open("api/dashboard_data.php?export=resumen", "_blank")
-}
-
-function exportarGrafica(tipo) {
-  let chart
-  switch (tipo) {
-    case "equipos":
-      chart = chartEstadoEquipos
-      break
-    case "mantenimientos":
-      chart = chartMantenimientosMes
-      break
-    case "ubicaciones":
-      chart = chartUbicaciones
-      break
-  }
-
-  if (chart) {
-    const url = chart.toBase64Image()
-    const link = document.createElement("a")
-    link.download = `grafica-${tipo}-${new Date().toISOString().split("T")[0]}.png`
-    link.href = url
-    link.click()
-  }
-}
-
-function exportarTabla(tipo) {
-  window.open(`api/dashboard_data.php?export=tabla&tipo=${tipo}`, "_blank")
-}
-
-/**
- * Funciones de navegación
- */
-function verEquipo(id) {
-  window.location.href = `modulos/equipos/equipos/?id=${id}`
-}
-
-function programarMantenimiento(id) {
-  window.location.href = `modulos/mantenimiento/programado/?equipo=${id}`
+  // Cumplimiento de metas
+  animarNumero("#kpi-cumplimiento", kpis.cumplimiento_metas, 2000, 1);
+  actualizarBarraProgreso("#cumplimiento-bar", kpis.cumplimiento_metas);
 }
 
 /**
  * Funciones de utilidad
  */
+function getIconoProceso(proceso) {
+  const iconos = {
+    mina: "minecart",
+    planta: "gear-wide-connected",
+    amalgamacion: "droplet-half",
+    flotacion: "water",
+  };
+  return iconos[proceso] || "circle";
+}
+
+function animarNumero(selector, valorFinal, duracion = 2000, decimales = 0) {
+  const elemento = $(selector);
+  const valorInicial = 0;
+  const incremento = valorFinal / (duracion / 16);
+  let valorActual = valorInicial;
+
+  const timer = setInterval(() => {
+    valorActual += incremento;
+    if (valorActual >= valorFinal) {
+      valorActual = valorFinal;
+      clearInterval(timer);
+    }
+    elemento.text(
+      valorActual.toFixed(decimales).replace(/\B(?=(\d{3})+(?!\d))/g, ",")
+    );
+  }, 16);
+}
+
+function actualizarBarraProgreso(selector, porcentaje) {
+  const barra = $(selector);
+  barra.css("width", `${Math.min(100, porcentaje)}%`);
+
+  // Cambiar color según porcentaje
+  barra.removeClass("bg-success bg-warning bg-danger");
+  if (porcentaje >= 85) {
+    barra.addClass("bg-success");
+  } else if (porcentaje >= 70) {
+    barra.addClass("bg-warning");
+  } else {
+    barra.addClass("bg-danger");
+  }
+}
+
 function mostrarCargando() {
-  // Implementar indicadores de carga si es necesario
+  $(".metric-value").html(
+    '<div class="spinner-border spinner-border-sm"></div>'
+  );
+  $(".chart-container canvas").hide();
+  $(".chart-container").append(
+    '<div class="text-center p-4 loading-chart"><div class="spinner-border"></div><br><small>Cargando...</small></div>'
+  );
 }
 
 function ocultarCargando() {
-  // Ocultar indicadores de carga
+  $(".loading-chart").remove();
+  $(".chart-container canvas").show();
 }
 
 function mostrarError(mensaje) {
-  console.error(mensaje)
-  // Implementar notificación de error
+  console.error(mensaje);
+  if (typeof window.showErrorToast === "function") {
+    window.showErrorToast(mensaje);
+  }
 }
 
-function actualizarTimestamp() {
-  const ahora = new Date()
-  const timestamp = ahora.toLocaleString("es-ES", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
+function actualizarReloj() {
+  const ahora = new Date();
+  const tiempo = ahora.toLocaleTimeString("es-ES", {
     hour: "2-digit",
     minute: "2-digit",
     second: "2-digit",
-  })
-  $("#ultima-actualizacion").text(timestamp)
+  });
+  const fecha = ahora.toLocaleDateString("es-ES", {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+
+  $("#reloj-tiempo").text(tiempo);
+  $("#reloj-fecha").text(fecha);
 }
 
-// Funciones adicionales para interactividad
-$(document).on("click", ".stat-card", function () {
-  $(this).addClass("clicked")
-  setTimeout(() => {
-    $(this).removeClass("clicked")
-  }, 200)
-})
+// Efectos adicionales
+$(document)
+  .on("mouseenter", ".metric-card", function () {
+    $(this).addClass("hover-effect");
+  })
+  .on("mouseleave", ".metric-card", function () {
+    $(this).removeClass("hover-effect");
+  });
 
-// Efecto de hover en las gráficas
-$("canvas").hover(
-  function () {
-    $(this).css("cursor", "pointer")
-  },
-  function () {
-    $(this).css("cursor", "default")
-  },
-)
+// Auto-refresh visual indicator
+let refreshCounter = 300; // 5 minutos
+setInterval(() => {
+  refreshCounter--;
+  if (refreshCounter <= 0) {
+    refreshCounter = 300;
+  }
+  $("#next-refresh").text(
+    `Próxima actualización en ${Math.floor(refreshCounter / 60)}:${(
+      refreshCounter % 60
+    )
+      .toString()
+      .padStart(2, "0")}`
+  );
+}, 1000);

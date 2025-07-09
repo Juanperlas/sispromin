@@ -439,7 +439,7 @@ include_once 'includes/topbar.php';
                             <div class="row g-3">
                                 <div class="col-md-6">
                                     <label class="form-label">Nombre del Sistema</label>
-                                    <input type="text" class="form-control" id="sistema-nombre" value="SIGESMANCOR">
+                                    <input type="text" class="form-control" id="sistema-nombre" value="SISPROMIN">
                                 </div>
                                 <div class="col-md-6">
                                     <label class="form-label">Zona Horaria</label>
@@ -486,7 +486,7 @@ include_once 'includes/topbar.php';
             <div class="config-section" id="section-acerca">
                 <div class="config-section-header">
                     <h4><i class="bi bi-info-circle me-2"></i>Acerca del Sistema</h4>
-                    <p class="text-muted">Información sobre SIGESMANCOR</p>
+                    <p class="text-muted">Información sobre SISPROMIN</p>
                 </div>
 
                 <div class="config-card">
@@ -498,7 +498,7 @@ include_once 'includes/topbar.php';
                             <div class="col-md-6">
                                 <div class="info-item">
                                     <strong>Nombre:</strong>
-                                    <span>SIGESMANCOR</span>
+                                    <span>SISPROMIN</span>
                                 </div>
                             </div>
                             <div class="col-md-6">

@@ -21,9 +21,9 @@ if (!estaAutenticado()) {
 }
 
 // Verificar permiso
-if (!tienePermiso("registros.produccion_mina.ver")) {
+if (!tienePermiso("registros.flotacion.ver")) {
     http_response_code(403);
-    echo json_encode(["success" => false, "message" => "No tiene permisos para ver registros de producción mina"]);
+    echo json_encode(["success" => false, "message" => "No tiene permisos para ver registros de flotación"]);
     exit;
 }
 
@@ -39,16 +39,16 @@ $orderDir = isset($_POST["order"][0]["dir"]) ? $_POST["order"][0]["dir"] : "desc
 
 // Mapeo de columnas para ordenamiento
 $columns = [
-    "pm.id",
-    "pm.codigo_registro",
-    "pm.fecha",
-    "tm.nombre",
-    "fm.nombre",
-    "pm.material_extraido",
-    "pm.desmonte",
-    "pm.ley_inferido_geologo",
+    "f.id",
+    "f.fecha",
+    "f.codigo_registro",
+    "tf.nombre",
+    "f.carga_mineral_promedio",
     "l.ley_laboratorio",
-    "valor_calculado"
+    "f.carga_mineral_extra",
+    "f.ley_inferido_metalurgista_extra",
+    "resultado_esperado",
+    "calificacion"
 ];
 
 // Filtros adicionales
@@ -59,7 +59,7 @@ $params = [];
 if (isset($_POST["fecha_inicio"]) && $_POST["fecha_inicio"] !== "") {
     $fechaInicio = DateTime::createFromFormat('d/m/Y', $_POST["fecha_inicio"]);
     if ($fechaInicio) {
-        $filtros[] = "pm.fecha >= ?";
+        $filtros[] = "f.fecha >= ?";
         $params[] = $fechaInicio->format('Y-m-d');
     }
 }
@@ -68,34 +68,28 @@ if (isset($_POST["fecha_inicio"]) && $_POST["fecha_inicio"] !== "") {
 if (isset($_POST["fecha_fin"]) && $_POST["fecha_fin"] !== "") {
     $fechaFin = DateTime::createFromFormat('d/m/Y', $_POST["fecha_fin"]);
     if ($fechaFin) {
-        $filtros[] = "pm.fecha <= ?";
+        $filtros[] = "f.fecha <= ?";
         $params[] = $fechaFin->format('Y-m-d');
     }
 }
 
 // Filtro por turno
 if (isset($_POST["turno_id"]) && $_POST["turno_id"] !== "") {
-    $filtros[] = "pm.turno_id = ?";
+    $filtros[] = "f.turno_id = ?";
     $params[] = $_POST["turno_id"];
-}
-
-// Filtro por frente
-if (isset($_POST["frente_id"]) && $_POST["frente_id"] !== "") {
-    $filtros[] = "pm.frente_id = ?";
-    $params[] = $_POST["frente_id"];
 }
 
 // Filtro por código
 if (isset($_POST["codigo"]) && $_POST["codigo"] !== "") {
-    $filtros[] = "pm.codigo_registro LIKE ?";
+    $filtros[] = "f.codigo_registro LIKE ?";
     $params[] = "%" . $_POST["codigo"] . "%";
 }
 
 // Filtro de búsqueda global
 if ($search !== "") {
-    $filtros[] = "(pm.codigo_registro LIKE ? OR tm.nombre LIKE ? OR fm.nombre LIKE ?)";
+    $filtros[] = "(f.codigo_registro LIKE ? OR tf.nombre LIKE ?)";
     $searchParam = "%$search%";
-    $params = array_merge($params, [$searchParam, $searchParam, $searchParam]);
+    $params = array_merge($params, [$searchParam, $searchParam]);
 }
 
 // Construir la condición WHERE
@@ -108,11 +102,10 @@ try {
     // Conexión a la base de datos
     $conexion = new Conexion();
 
-    // Consulta base con JOINs
-    $sqlBase = "FROM produccion_mina pm 
-                INNER JOIN turnos_mina tm ON pm.turno_id = tm.id 
-                INNER JOIN frentes_mina fm ON pm.frente_id = fm.id 
-                LEFT JOIN laboratorio l ON l.tipo_registro = 'produccion_mina' AND l.registro_id = pm.id";
+    // Consulta base con JOINs correctos
+    $sqlBase = "FROM flotacion f 
+                INNER JOIN turnos_flotacion tf ON f.turno_id = tf.id 
+                LEFT JOIN laboratorio l ON f.id = l.registro_id AND l.tipo_registro = 'flotacion'";
 
     // Consulta para contar registros totales (sin filtros)
     $sqlTotal = "SELECT COUNT(*) as total $sqlBase";
@@ -125,22 +118,36 @@ try {
     $totalFiltered = $resultadoFiltered["total"];
 
     // Consulta principal para obtener los datos
-    $sql = "SELECT pm.id, pm.codigo_registro, pm.fecha, pm.turno_id, pm.frente_id,
-                   pm.material_extraido, pm.desmonte, pm.ley_inferido_geologo, pm.creado_en,
-                   tm.nombre as turno_nombre, fm.nombre as frente_nombre,
-                   l.codigo_muestra, l.ley_laboratorio,
+    $sql = "SELECT f.id, f.codigo_registro, f.fecha, f.turno_id,
+                   f.carga_mineral_promedio, f.carga_mineral_extra, 
+                   f.codigo_muestra_mat_extra, f.ley_inferido_metalurgista_extra,
+                   f.creado_en,
+                   tf.nombre as turno_nombre,
+                   l.codigo_muestra,
+                   l.ley_laboratorio,
+                   -- Cálculo del resultado esperado
+                   COALESCE(
+                       (f.carga_mineral_promedio * COALESCE(l.ley_laboratorio, 0)) + 
+                       (COALESCE(f.carga_mineral_extra, 0) * COALESCE(f.ley_inferido_metalurgista_extra, 0)),
+                       0
+                   ) as resultado_esperado,
+                   -- Información sobre el estado del cálculo
                    CASE 
-                       WHEN l.ley_laboratorio IS NOT NULL THEN pm.material_extraido * l.ley_laboratorio
-                       WHEN pm.ley_inferido_geologo IS NOT NULL THEN pm.material_extraido * pm.ley_inferido_geologo
-                       ELSE 0
-                   END as valor_calculado
+                       WHEN l.ley_laboratorio IS NULL THEN 'sin_laboratorio'
+                       WHEN f.carga_mineral_extra IS NOT NULL AND f.carga_mineral_extra > 0 AND f.ley_inferido_metalurgista_extra IS NULL THEN 'falta_ley_extra'
+                       WHEN f.carga_mineral_extra IS NOT NULL AND f.carga_mineral_extra > 0 AND f.ley_inferido_metalurgista_extra IS NOT NULL AND l.ley_laboratorio IS NOT NULL THEN 'completo'
+                       WHEN f.carga_mineral_extra IS NULL AND l.ley_laboratorio IS NOT NULL THEN 'completo_sin_extra'
+                       ELSE 'parcial'
+                   END as estado_calculo,
+                   -- Calificación aleatoria (como solicitaste)
+                   (RAND() * 30 + 70) as calificacion
             $sqlBase $where";
 
     // Aplicar ordenamiento
     if (isset($columns[$orderColumn])) {
         $sql .= " ORDER BY {$columns[$orderColumn]} $orderDir";
     } else {
-        $sql .= " ORDER BY pm.id DESC"; // Por defecto ordenar por ID descendente
+        $sql .= " ORDER BY f.id DESC"; // Por defecto ordenar por ID descendente
     }
 
     // Aplicar paginación
@@ -163,14 +170,15 @@ try {
             "fecha_formateada" => $fechaFormateada,
             "turno_id" => $row["turno_id"],
             "turno_nombre" => $row["turno_nombre"],
-            "frente_id" => $row["frente_id"],
-            "frente_nombre" => $row["frente_nombre"],
-            "material_extraido" => $row["material_extraido"],
-            "desmonte" => $row["desmonte"],
-            "ley_inferido_geologo" => $row["ley_inferido_geologo"],
+            "carga_mineral_promedio" => $row["carga_mineral_promedio"],
+            "carga_mineral_extra" => $row["carga_mineral_extra"],
+            "codigo_muestra_mat_extra" => $row["codigo_muestra_mat_extra"],
+            "ley_inferido_metalurgista_extra" => $row["ley_inferido_metalurgista_extra"],
             "codigo_muestra" => $row["codigo_muestra"],
             "ley_laboratorio" => $row["ley_laboratorio"],
-            "valor_calculado" => $row["valor_calculado"],
+            "resultado_esperado" => $row["resultado_esperado"],
+            "estado_calculo" => $row["estado_calculo"],
+            "calificacion" => $row["calificacion"],
             "creado_en" => $row["creado_en"]
         ];
     }
@@ -193,7 +201,7 @@ try {
     ];
 
     // Registrar error en log
-    error_log("Error en listar.php (produccion_mina): " . $e->getMessage());
+    error_log("Error en listar.php (flotacion): " . $e->getMessage());
 }
 
 // Devolver respuesta en formato JSON

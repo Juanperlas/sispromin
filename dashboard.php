@@ -1,4 +1,3 @@
-```php
 <?php
 // Incluir archivos necesarios
 require_once 'db/funciones.php';
@@ -17,10 +16,11 @@ if (!tienePermiso('dashboard.ver')) {
 }
 
 // Título de la página
-$titulo = "Dashboard - Panel de Control";
+$titulo = "Dashboard - SISPROMIN";
 
 // Definir CSS y JS adicionales para este módulo
 $css_adicional = [
+    'assets/css/colors.css',
     'assets/css/dashboard.css',
     'assets/vendor/bootstrap-icons/bootstrap-icons.css'
 ];
@@ -28,7 +28,6 @@ $css_adicional = [
 $js_adicional = [
     'assets/js/jquery-3.7.1.min.js',
     'assets/vendor/chartjs/chart.min.js',
-    'assets/js/vendor/apexcharts/apexcharts.min.js',
     'assets/js/dashboard.js'
 ];
 
@@ -45,226 +44,230 @@ include_once 'includes/topbar.php';
         <div class="dashboard-title-section">
             <h1 class="dashboard-title">
                 <i class="bi bi-speedometer2"></i>
-                Panel de Control - SIGESMANCOR
+                Panel de Control SISPROMIN
             </h1>
-            <p class="dashboard-subtitle">Sistema de Gestión de Mantenimiento CORDIAL SAC</p>
+            <p class="dashboard-subtitle">Monitoreo en tiempo real - Sistema de Producción Minera</p>
         </div>
         <div class="dashboard-actions">
-            <button type="button" class="btn-dashboard-action" id="btn-exportar-resumen">
-                <i class="bi bi-download"></i>
-                Exportar Resumen
-            </button>
-            <button type="button" class="btn-dashboard-action" id="btn-actualizar-datos">
+            <div class="dashboard-clock">
+                <div class="clock-time" id="reloj-tiempo">--:--:--</div>
+                <div class="clock-date" id="reloj-fecha">Cargando...</div>
+            </div>
+            <button type="button" class="btn-dashboard-action" id="btn-actualizar-dashboard">
                 <i class="bi bi-arrow-clockwise"></i>
                 Actualizar
             </button>
         </div>
     </div>
 
-    <!-- Tarjetas de Estadísticas Principales -->
-    <div class="stats-grid">
-        <div class="stat-card stat-primary">
-            <div class="stat-icon">
-                <i class="bi bi-gear-fill"></i>
+    <!-- Métricas Principales (Solo 4) -->
+    <div class="metrics-grid">
+        <div class="metric-card metric-primary">
+            <div class="metric-icon">
+                <i class="bi bi-gem"></i>
             </div>
-            <div class="stat-content">
-                <div class="stat-number" id="total-equipos">0</div>
-                <div class="stat-label">Total Equipos</div>
-                <div class="stat-change positive" id="equipos-change">+0 este mes</div>
-            </div>
-        </div>
-
-        <div class="stat-card stat-success">
-            <div class="stat-icon">
-                <i class="bi bi-check-circle-fill"></i>
-            </div>
-            <div class="stat-content">
-                <div class="stat-number" id="equipos-activos">0</div>
-                <div class="stat-label">Equipos Activos</div>
-                <div class="stat-change positive" id="activos-percentage">0%</div>
+            <div class="metric-content">
+                <div class="metric-number" id="produccion-hoy">0</div>
+                <div class="metric-label">Producción Hoy (t)</div>
+                <div class="metric-change" id="variacion-produccion">+0%</div>
             </div>
         </div>
 
-        <div class="stat-card stat-warning">
-            <div class="stat-icon">
-                <i class="bi bi-tools"></i>
+        <div class="metric-card metric-success">
+            <div class="metric-icon">
+                <i class="bi bi-clipboard-data"></i>
             </div>
-            <div class="stat-content">
-                <div class="stat-number" id="mantenimientos-pendientes">0</div>
-                <div class="stat-label">Mantenimientos Pendientes</div>
-                <div class="stat-change neutral" id="pendientes-change">Programados</div>
-            </div>
-        </div>
-
-        <div class="stat-card stat-danger">
-            <div class="stat-icon">
-                <i class="bi bi-exclamation-triangle-fill"></i>
-            </div>
-            <div class="stat-content">
-                <div class="stat-number" id="equipos-criticos">0</div>
-                <div class="stat-label">Equipos Críticos</div>
-                <div class="stat-change negative" id="criticos-change">Requieren atención</div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Sección de Gráficas y Análisis -->
-    <div class="dashboard-grid">
-        <!-- Gráfica de Estado de Equipos -->
-        <div class="dashboard-card">
-            <div class="card-header">
-                <h3 class="card-title">
-                    <i class="bi bi-pie-chart-fill"></i>
-                    Estado de Equipos
-                </h3>
-                <div class="card-actions">
-                    <button class="btn-card-action" id="btn-export-equipos">
-                        <i class="bi bi-download"></i>
-                    </button>
-                </div>
-            </div>
-            <div class="card-content">
-                <canvas id="chart-estado-equipos"></canvas>
+            <div class="metric-content">
+                <div class="metric-number" id="registros-hoy">0</div>
+                <div class="metric-label">Registros Hoy</div>
+                <div class="metric-change neutral">Operaciones</div>
             </div>
         </div>
 
-        <!-- Gráfica de Mantenimientos por Mes -->
-        <div class="dashboard-card">
-            <div class="card-header">
-                <h3 class="card-title">
-                    <i class="bi bi-bar-chart-fill"></i>
-                    Mantenimientos por Mes
-                </h3>
-                <div class="card-actions">
-                    <button class="btn-card-action" id="btn-export-mantenimientos">
-                        <i class="bi bi-download"></i>
-                    </button>
-                </div>
+        <div class="metric-card metric-warning">
+            <div class="metric-icon">
+                <i class="bi bi-graph-up"></i> <!-- Ícono de promedio -->
             </div>
-            <div class="card-content">
-                <canvas id="chart-mantenimientos-mes"></canvas>
+            <div class="metric-content">
+                <div class="metric-number" id="ley-promedio">0</div>
+                <div class="metric-label">Ley Promedio (g/t)</div>
+                <div class="metric-change neutral">Laboratorio</div>
             </div>
         </div>
 
-        <!-- Distribución por Ubicación -->
-        <div class="dashboard-card">
-            <div class="card-header">
-                <h3 class="card-title">
-                    <i class="bi bi-geo-alt-fill"></i>
-                    Distribución por Ubicación
-                </h3>
-                <div class="card-actions">
-                    <button class="btn-card-action" id="btn-export-ubicaciones">
-                        <i class="bi bi-download"></i>
-                    </button>
-                </div>
+        <div class="metric-card metric-info">
+            <div class="metric-icon">
+                <i class="bi bi-speedometer2"></i>
             </div>
-            <div class="card-content">
-                <canvas id="chart-ubicaciones"></canvas>
-            </div>
-        </div>
-    </div>
-
-    <!-- Sección de Tablas Detalladas -->
-    <div class="dashboard-tables">
-        <!-- Equipos que Requieren Atención -->
-        <div class="dashboard-card table-card">
-            <div class="card-header">
-                <h3 class="card-title">
-                    <i class="bi bi-exclamation-circle-fill"></i>
-                    Equipos que Requieren Atención
-                </h3>
-                <div class="card-actions">
-                    <button class="btn-card-action" id="btn-export-atencion">
-                        <i class="bi bi-file-earmark-excel"></i>
-                    </button>
-                </div>
-            </div>
-            <div class="card-content">
-                <div class="table-responsive">
-                    <table class="dashboard-table" id="tabla-equipos-atencion">
-                        <thead>
-                            <tr>
-                                <th>Equipo</th>
-                                <th>Ubicación</th>
-                                <th>Estado</th>
-                                <th>Próximo Mantenimiento</th>
-                                <th>Acciones</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td colspan="5" class="text-center">Cargando datos...</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-
-        <!-- Últimos Mantenimientos Realizados -->
-        <div class="dashboard-card table-card">
-            <div class="card-header">
-                <h3 class="card-title">
-                    <i class="bi bi-check2-circle"></i>
-                    Últimos Mantenimientos Realizados
-                </h3>
-                <div class="card-actions">
-                    <button class="btn-card-action" id="btn-ver-todo-historial">
-                        <i class="bi bi-eye"></i>
-                    </button>
-                </div>
-            </div>
-            <div class="card-content">
-                <div class="table-responsive">
-                    <table class="dashboard-table" id="tabla-ultimos-mantenimientos">
-                        <thead>
-                            <tr>
-                                <th>Fecha</th>
-                                <th>Equipo</th>
-                                <th>Tipo</th>
-                                <th>Descripción</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td colspan="4" class="text-center">Cargando datos...</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Sección de Alertas y Notificaciones -->
-    <div class="alerts-section">
-        <div class="dashboard-card alerts-card">
-            <div class="card-header">
-                <h3 class="card-title">
-                    <i class="bi bi-bell-fill"></i>
-                    Alertas y Notificaciones
-                </h3>
-                <div class="card-actions">
-                    <span class="alert-count" id="total-alertas">0</span>
-                </div>
-            </div>
-            <div class="card-content">
-                <div class="alerts-container" id="container-alertas">
-                    <div class="alert-loading">
-                        <div class="spinner"></div>
-                        <span>Cargando alertas...</span>
+            <div class="metric-content">
+                <div class="metric-number" id="eficiencia-operacional">0</div>
+                <div class="metric-label">Eficiencia (%)</div>
+                <div class="metric-progress">
+                    <div class="progress">
+                        <div class="progress-bar" id="eficiencia-bar" style="width: 0%"></div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
+    <!-- Sección Principal de Gráficas -->
+    <div class="dashboard-grid">
+        <!-- Gráfica Principal: Tendencia Semanal -->
+        <div class="dashboard-card chart-main">
+            <div class="card-header">
+                <h3 class="card-title">
+                    <i class="bi bi-graph-up"></i>
+                    Tendencia de Producción (7 días)
+                </h3>
+                <div class="card-actions">
+                    <button class="btn-card-action" title="Exportar">
+                        <i class="bi bi-download"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="card-content">
+                <canvas id="chart-tendencia-semanal"></canvas>
+            </div>
+        </div>
+
+        <!-- Gráfica Secundaria: Distribución de Procesos -->
+        <div class="dashboard-card">
+            <div class="card-header">
+                <h3 class="card-title">
+                    <i class="bi bi-pie-chart"></i>
+                    Distribución por Proceso
+                </h3>
+                <div class="card-actions">
+                    <button class="btn-card-action" title="Exportar">
+                        <i class="bi bi-download"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="card-content">
+                <canvas id="chart-distribucion-procesos"></canvas>
+            </div>
+        </div>
+
+        <!-- Producción Detallada de Hoy -->
+        <div class="dashboard-card">
+            <div class="card-header">
+                <h3 class="card-title">
+                    <i class="bi bi-bar-chart"></i>
+                    Producción vs Meta (Hoy)
+                </h3>
+                <div class="card-actions">
+                    <button class="btn-card-action" title="Exportar">
+                        <i class="bi bi-download"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="card-content">
+                <canvas id="chart-produccion-hoy"></canvas>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Sección Inferior -->
+    <div class="bottom-section">
+        <!-- Gráfica de Comparación -->
+        <div class="dashboard-card">
+            <div class="card-header">
+                <h3 class="card-title">
+                    <i class="bi bi-list-check"></i>
+                    Producción Detallada - Hoy
+                </h3>
+            </div>
+            <div class="card-content">
+                <div id="produccion-hoy-detalle" class="procesos-container">
+                    <div class="text-center p-3">
+                        <div class="spinner"></div>
+                        <small>Cargando datos...</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Alertas del Sistema -->
+        <div class="dashboard-card">
+            <div class="card-header">
+                <h3 class="card-title">
+                    <i class="bi bi-bell"></i>
+                    Alertas del Sistema
+                </h3>
+            </div>
+            <div class="card-content">
+                <div id="alertas-container" class="alertas-list">
+                    <div class="text-center p-3">
+                        <div class="spinner"></div>
+                        <small>Verificando alertas...</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Actividad Reciente -->
+        <div class="dashboard-card">
+            <div class="card-header">
+                <h3 class="card-title">
+                    <i class="bi bi-clock-history"></i>
+                    Actividad Reciente
+                </h3>
+            </div>
+            <div class="card-content">
+                <div id="actividad-reciente" class="actividad-list">
+                    <div class="text-center p-3">
+                        <div class="spinner"></div>
+                        <small>Cargando actividad...</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Navegación Rápida -->
+    <div class="quick-nav">
+        <div class="quick-nav-header">
+            <h3><i class="bi bi-lightning"></i> Acceso Rápido</h3>
+        </div>
+        <div class="quick-nav-grid">
+            <button class="quick-nav-btn" data-modulo="modulos/registros/mina/index.php">
+                <i class="bi bi-minecart"></i>
+                <span>Registro Mina</span>
+            </button>
+            <button class="quick-nav-btn" data-modulo="modulos/registros/planta/index.php">
+                <i class="bi bi-gear-wide-connected"></i>
+                <span>Registro Planta</span>
+            </button>
+            <button class="quick-nav-btn" data-modulo="modulos/registros/amalgamacion/index.php">
+                <i class="bi bi-droplet-half"></i>
+                <span>Amalgamación</span>
+            </button>
+            <button class="quick-nav-btn" data-modulo="modulos/registros/flotacion/index.php">
+                <i class="bi bi-water"></i>
+                <span>Flotación</span>
+            </button>
+            <button class="quick-nav-btn" data-modulo="modulos/registros/historial/index.php">
+                <i class="bi bi-clock-history"></i>
+                <span>Historial</span>
+            </button>
+            <button class="quick-nav-btn" data-modulo="modulos/registros/estadistica/index.php">
+                <i class="bi bi-graph-up"></i>
+                <span>Estadísticas</span>
+            </button>
+        </div>
+    </div>
+
     <!-- Footer del Dashboard -->
     <div class="dashboard-footer">
         <div class="footer-info">
-            <p><strong>SIGESMANCOR</strong> - Sistema de Gestión de Mantenimiento</p>
-            <p>CORDIAL SAC © <?php echo date('Y'); ?> - Última actualización: <span id="ultima-actualizacion">--</span></p>
+            <p><strong>SISPROMIN</strong> - Sistema de Producción Minera</p>
+            <p id="next-refresh">Próxima actualización en 5:00</p>
+        </div>
+        <div class="footer-status">
+            <span class="status-indicator online"></span>
+            <span>Sistema en línea</span>
         </div>
     </div>
 </div>
@@ -273,4 +276,3 @@ include_once 'includes/topbar.php';
 // Incluir el footer
 include_once 'includes/footer.php';
 ?>
-```

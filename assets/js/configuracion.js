@@ -1,6 +1,6 @@
 /**
  * Módulo de Configuración
- * SIGESMANCOR
+ * SISPROMIN
  */
 
 // Variables globales

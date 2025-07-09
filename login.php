@@ -71,14 +71,14 @@ if (isset($_GET['demo'])) {
 <html lang="es">
 
 <head>
-    <title>Login | SIGESMAN CORDIAL</title>
+    <title>Login | SISPROMIN</title>
     <!-- Meta -->
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=0, minimal-ui" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-    <meta name="description" content="SIGESMAN CORDIAL - Sistema de Gestión y Mantenimiento de Cordial" />
+    <meta name="description" content="SISPROMIN - Sistema de Producción Minera" />
     <meta name="keywords" content="mantenimiento, equipos, gestión, control" />
-    <meta name="author" content="SIGESMANCOR" />
+    <meta name="author" content="SISPROMIN" />
 
     <!-- Favicon -->
     <link rel="icon" href="assets/img/logo-icon.png" type="image/png" />
@@ -126,10 +126,10 @@ if (isset($_GET['demo'])) {
             <!-- Logo y branding -->
             <div class="brand-section">
                 <div class="logo-container">
-                    <img src="assets/img/logo.png" alt="SIGESMANCOR" class="logo">
+                    <img src="assets/img/logo.png" alt="SISPROMIN" class="logo">
                 </div>
-                <h1 class="brand-title">SIGESMAN CORDIAL</h1>
-                <p class="brand-subtitle">Sistema de Gestión y Mantenimiento de Cordial</p>
+                <h1 class="brand-title">SISPROMIN</h1>
+                <p class="brand-subtitle">Sistema de Producción Minera</p>
             </div>
 
             <!-- Formulario de login -->
@@ -207,17 +207,17 @@ if (isset($_GET['demo'])) {
             <!-- Información de la empresa -->
             <div class="company-info">
                 <div class="company-logo">
-                    <img src="assets/img/logo-icon.png" alt="CORDIAL SAC">
+                    <img src="assets/img/logo-icon.png" alt="VOL COMPANY SAC">
                 </div>
                 <div class="company-name">
-                    CORDIAL SAC
+                    VOL COMPANY SAC
                 </div>
             </div>
         </div>
 
         <!-- Footer -->
         <div class="login-footer">
-            <p>&copy; <?php echo date('Y'); ?> SIGESMAN CORDIAL - CORDIAL SAC. Todos los derechos reservados.</p>
+            <p>&copy; <?php echo date('Y'); ?> SISPROMIN - VOL COMPANY SAC. Todos los derechos reservados.</p>
         </div>
     </div>
 
